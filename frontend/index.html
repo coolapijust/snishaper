@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SniShaper - DPI 代理工具</title>
+    <link rel="stylesheet" href="/src/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+</head>
+<body>
+    <div id="app">
+        <aside class="sidebar">
+            <div class="logo">
+                <span class="logo-text">SniShaper</span>
+            </div>
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active" data-page="dashboard">
+                    <span class="nav-icon"></span>
+                    <span>仪表盘</span>
+                </a>
+                <a href="#" class="nav-item" data-page="rules">
+                    <span class="nav-icon"></span>
+                    <span>规则</span>
+                </a>
+                <a href="#" class="nav-item" data-page="logs">
+                    <span class="nav-icon"></span>
+                    <span>日志</span>
+                </a>
+                <a href="#" class="nav-item" data-page="settings">
+                    <span class="nav-icon"></span>
+                    <span>设置</span>
+                </a>
+            </nav>
+            <div class="sidebar-bottom">
+                <button class="theme-toggle" id="theme-toggle" title="切换主题">
+                    🌙
+                </button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <!-- Dashboard Page -->
+            <div id="page-dashboard" class="page">
+                <h1>仪表盘</h1>
+                <p class="page-subtitle">实时监控代理状态与流量</p>
+
+                <div class="status-cards">
+                    <div class="card">
+                        <div class="card-title">代理状态</div>
+                        <div class="status-indicator" id="proxy-status">
+                            <div class="status-dot"></div>
+                            <span class="status-text">已停止</span>
+                        </div>
+                        <div class="status-info">
+                            监听: <span id="listen-port">8080</span> | 模式: <span id="proxy-mode">MITM</span>
+                        </div>
+                        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                            <button class="btn btn-primary" id="btn-start" onclick="startProxy()">启动代理</button>
+                            <button class="btn btn-danger" id="btn-stop" onclick="stopProxy()" style="display: none;">停止代理</button>
+                            <button class="btn btn-secondary" id="btn-sysproxy" onclick="toggleSystemProxy()">系统代理: 关</button>
+                        </div>
+                    </div>
+
+                    <div class="card mode-card">
+                        <div class="card-title">代理模式</div>
+                        <div class="mode-selector">
+                            <label class="mode-option">
+                                <input type="radio" name="mode" value="mitm" checked>
+                                <div>
+                                    <div class="mode-label">MITM 中间人</div>
+                                    <div class="mode-desc">修改 SNI 绕过 DPI</div>
+                                </div>
+                            </label>
+                            <label class="mode-option">
+                                <input type="radio" name="mode" value="transparent">
+                                <div>
+                                    <div class="mode-label">透传模式</div>
+                                    <div class="mode-desc">仅 Google 系走境内</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">流量统计</div>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-label">↓ 下行</div>
+                            <div class="stat-value" id="stat-downlink">0 B</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">↑ 上行</div>
+                            <div class="stat-value" id="stat-uplink">0 B</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">连接数</div>
+                            <div class="stat-value" id="stat-connections">0</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">运行时间</div>
+                            <div class="stat-value" id="stat-uptime">00:00:00</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rules Page -->
+            <div id="page-rules" class="page" style="display: none;">
+                <div class="page-header">
+                    <h1>网站规则</h1>
+                    <button class="btn btn-primary" onclick="showAddRuleModal()">+ 添加规则</button>
+                </div>
+                <div class="rules-list" id="rules-list">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📋</div>
+                        <div class="empty-state-text">暂无规则</div>
+                        <div class="empty-state-hint">点击上方按钮添加网站规则</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Logs Page -->
+            <div id="page-logs" class="page" style="display: none;">
+                <div class="page-header">
+                    <h1>日志</h1>
+                    <button class="btn btn-secondary" onclick="clearLogs()">清空日志</button>
+                </div>
+                <div class="log-container" id="log-container">
+                    <div class="log-entry">
+                        <span class="log-time">--:--:--</span>
+                        <span class="log-level info">INFO</span>
+                        <span>系统就绪，等待启动代理...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Page -->
+            <div id="page-settings" class="page" style="display: none;">
+                <h1>设置</h1>
+                <p class="page-subtitle">配置代理与证书相关选项</p>
+
+                <div class="settings-section">
+                    <h3>代理设置</h3>
+                    <div class="setting-item">
+                        <label>监听端口</label>
+                        <input type="text" id="setting-port" value="8080">
+                    </div>
+                    <div class="setting-item">
+                        <label>启用日志</label>
+                        <input type="checkbox" id="setting-logs" checked>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>证书管理</h3>
+                    <div class="cert-info">
+                        CA 证书用于 MITM 模式解密 HTTPS 流量
+                    </div>
+                    <button class="btn btn-primary" onclick="regenerateCert()">重新生成证书</button>
+                    <button class="btn btn-secondary" onclick="exportCert()">导出证书</button>
+                </div>
+
+                <div class="settings-section">
+                    <h3>配置导入导出</h3>
+                    <button class="btn btn-primary" onclick="exportConfig()">导出配置</button>
+                    <button class="btn btn-secondary" onclick="importConfig()">导入配置</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="modal-overlay" class="modal-overlay" style="display: none;">
+        <div class="modal">
+            <h3 id="modal-title">添加规则</h3>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>名称</label>
+                    <input type="text" id="input-name" placeholder="例如: Google 服务">
+                </div>
+                <div class="form-group">
+                    <label>域名 (每行一个)</label>
+                    <textarea id="input-domains" rows="4" placeholder="google.com&#10;*.google.com"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>模式</label>
+                    <select id="input-mode">
+                        <option value="mitm">MITM 中间人</option>
+                        <option value="transparent">透传模式</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>上游服务器</label>
+                    <input type="text" id="input-upstream" placeholder="例如: 8.137.102.117:443">
+                </div>
+                <div class="form-group">
+                    <label>SNI 伪造</label>
+                    <input type="text" id="input-snifake" placeholder="可选，用于伪造 SNI">
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="input-enabled" checked> 启用
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+                <button class="btn btn-primary" onclick="confirmModal()">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Certificate Install Modal -->
+    <div id="cert-modal" class="modal-overlay" style="display: none;">
+        <div class="modal" style="max-width: 480px;">
+            <h3>证书安装提示</h3>
+            <div class="modal-body">
+                <div class="cert-warning-icon">⚠️</div>
+                <p>您正在使用 <strong>MITM 模式</strong>，需要安装 CA 证书才能解密 HTTPS 流量。</p>
+                <div class="cert-status-box">
+                    <div class="cert-status-item">
+                        <span class="cert-status-label">安装状态:</span>
+                        <span class="cert-status-value" id="cert-install-status">未安装</span>
+                    </div>
+                    <div class="cert-status-item">
+                        <span class="cert-status-label">证书路径:</span>
+                        <span class="cert-status-value" id="cert-path"></span>
+                    </div>
+                </div>
+                <div class="cert-help-text" id="cert-help-text"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeCertModal()">关闭</button>
+                <button class="btn btn-primary" onclick="openCertFile()">打开证书文件</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/src/main.js" type="module"></script>
+</body>
+</html>

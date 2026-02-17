@@ -1,0 +1,1067 @@
+{
+  "version": "1.0",
+  "type": "mitm",
+  "rules": [
+    {
+      "name": "pixiv.net",
+      "enabled": true,
+      "domains": [
+        "fanbox.cc",
+        "pixiv.net"
+      ],
+      "upstream": "pixiv.net",
+      "sni_fake": "pixivision.net"
+    },
+    {
+      "name": "lc-event.pixiv.net",
+      "enabled": true,
+      "domains": [
+        "lc-event.pixiv.net"
+      ],
+      "upstream": "lc.event.pixiv.net",
+      "sni_fake": "pixivision.net"
+    },
+    {
+      "name": "pximg.net",
+      "enabled": true,
+      "domains": [
+        "pximg.net"
+      ],
+      "upstream": "i.pximg.net",
+      "sni_fake": "pixivision.net"
+    },
+    {
+      "name": "pixiv.pximg.net",
+      "enabled": true,
+      "domains": [
+        "pixiv.pximg.net"
+      ],
+      "upstream": "pixiv.pximg.net",
+      "sni_fake": "pixiv.pximg.net"
+    },
+    {
+      "name": "a.pixiv.org",
+      "enabled": true,
+      "domains": [
+        "a.pixiv.org"
+      ],
+      "upstream": "a.pixiv.org",
+      "sni_fake": "a.pixiv.org"
+    },
+    {
+      "name": "d.pixiv.org",
+      "enabled": true,
+      "domains": [
+        "d.pixiv.org"
+      ],
+      "upstream": "d.pixiv.org",
+      "sni_fake": "d.pixiv.org"
+    },
+    {
+      "name": "api.fanbox.cc",
+      "enabled": true,
+      "domains": [
+        "api.fanbox.cc"
+      ],
+      "upstream": "api.fanbox.cc",
+      "sni_fake": "api.fanbox.cc"
+    },
+    {
+      "name": "sukebei.nyaa.si",
+      "enabled": true,
+      "domains": [
+        "sukebei.nyaa.si"
+      ],
+      "upstream": "sukebei.nyaa.si",
+      "sni_fake": "sukebei.nyaa.si"
+    },
+    {
+      "name": "nyaa.si",
+      "enabled": true,
+      "domains": [
+        "nyaa.si"
+      ],
+      "upstream": "nyaa.si",
+      "sni_fake": "nyaa.si"
+    },
+    {
+      "name": "pornhub.com",
+      "enabled": true,
+      "domains": [
+        "pornhub.com"
+      ],
+      "upstream": "pornhub.com",
+      "sni_fake": "pornhub.com"
+    },
+    {
+      "name": "gstatic.com",
+      "enabled": true,
+      "domains": [
+        "android.com",
+        "gdata.youtube.com",
+        "gemini.google.com",
+        "ggpht.com",
+        "gmail.com",
+        "googlevideo.com",
+        "gstatic.com",
+        "upload.youtube.com",
+        "uploads.stage.gdata.youtube.com",
+        "usercontent.youtube.com",
+        "youtu.be",
+        "youtube-nocookie.com",
+        "youtube.com",
+        "ytimg.com"
+      ],
+      "upstream": "google.com",
+      "sni_fake": "g.cn"
+    },
+    {
+      "name": "cdn.jsdelivr.net",
+      "enabled": true,
+      "domains": [
+        "cdn.jsdelivr.net",
+        "jsdelivr.net"
+      ],
+      "upstream": "cdn.jsdelivr.net",
+      "sni_fake": "cdn.jsdelivr.net"
+    },
+    {
+      "name": "wikipedia.org",
+      "enabled": true,
+      "domains": [
+        "m.mediawiki.org",
+        "m.wikibooks.org",
+        "m.wikidata.org",
+        "m.wikifunctions.org",
+        "m.wikimedia.org",
+        "m.wikinews.org",
+        "m.wikipedia.org",
+        "m.wikiquote.org",
+        "m.wikisource.org",
+        "m.wikiversity.org",
+        "m.wikivoyage.org",
+        "m.wiktionary.org",
+        "mediawiki.org",
+        "server_name",
+        "wikibooks.org",
+        "wikidata.org",
+        "wikifunctions.org",
+        "wikimedia.org",
+        "wikinews.org",
+        "wikipedia.org",
+        "wikiquote.org",
+        "wikisource.org",
+        "wikiversity.org",
+        "wikivoyage.org",
+        "wiktionary.org"
+      ],
+      "upstream": "wikipedia.org",
+      "sni_fake": "wikipedia.org"
+    },
+    {
+      "name": "upload.wikimedia.org",
+      "enabled": true,
+      "domains": [
+        "upload.wikimedia.org"
+      ],
+      "upstream": "upload.wikipedia.org",
+      "sni_fake": "upload.wikimedia.org"
+    },
+    {
+      "name": "archiveofourown.org",
+      "enabled": true,
+      "domains": [
+        "archiveofourown.org"
+      ],
+      "upstream": "archiveofourown.org",
+      "sni_fake": "archiveofourown.org"
+    },
+    {
+      "name": "steamcommunity.com",
+      "enabled": true,
+      "domains": [
+        "steamcommunity.com"
+      ],
+      "upstream": "steamcommunity.com",
+      "sni_fake": "steamcommunity.com"
+    },
+    {
+      "name": "e-hentai.org",
+      "enabled": true,
+      "domains": [
+        "e-hentai.org"
+      ],
+      "upstream": "e.hentai.org",
+      "sni_fake": "e-hentai.org"
+    },
+    {
+      "name": "exhentai.org",
+      "enabled": true,
+      "domains": [
+        "exhentai.org"
+      ],
+      "upstream": "exhentai.org",
+      "sni_fake": "exhentai.org"
+    },
+    {
+      "name": "forums.e-hentai.org",
+      "enabled": true,
+      "domains": [
+        "forums.e-hentai.org"
+      ],
+      "upstream": "forums.e.hentai.org",
+      "sni_fake": "forums.e-hentai.org"
+    },
+    {
+      "name": "api.e-hentai.org",
+      "enabled": true,
+      "domains": [
+        "api.e-hentai.org"
+      ],
+      "upstream": "api.e.hentai.org",
+      "sni_fake": "api.e-hentai.org"
+    },
+    {
+      "name": "upld.e-hentai.org",
+      "enabled": true,
+      "domains": [
+        "upld.e-hentai.org",
+        "upload.e-hentai.org"
+      ],
+      "upstream": "upload.e.hentai.org",
+      "sni_fake": "upld.e-hentai.org"
+    },
+    {
+      "name": "ehgt.org",
+      "enabled": true,
+      "domains": [
+        "ehgt.org"
+      ],
+      "upstream": "ehgt.org",
+      "sni_fake": "ehgt.org"
+    },
+    {
+      "name": "hentaiverse.org",
+      "enabled": true,
+      "domains": [
+        "hentaiverse.org"
+      ],
+      "upstream": "hentaiverse.org",
+      "sni_fake": "hentaiverse.org"
+    },
+    {
+      "name": "ehwiki.org",
+      "enabled": true,
+      "domains": [
+        "ehwiki.org"
+      ],
+      "upstream": "ehwiki.org",
+      "sni_fake": "ehwiki.org"
+    },
+    {
+      "name": "ehtracker.org",
+      "enabled": true,
+      "domains": [
+        "ehtracker.org"
+      ],
+      "upstream": "ehtracker.org",
+      "sni_fake": "ehtracker.org"
+    },
+    {
+      "name": "okx.com",
+      "enabled": true,
+      "domains": [
+        "okx.com"
+      ],
+      "upstream": "okx.com",
+      "sni_fake": "okx.com"
+    },
+    {
+      "name": "f-droid.org",
+      "enabled": true,
+      "domains": [
+        "f-droid.org"
+      ],
+      "upstream": "f.droid.org",
+      "sni_fake": "f-droid.org"
+    },
+    {
+      "name": "forum.f-droid.org",
+      "enabled": true,
+      "domains": [
+        "forum.f-droid.org"
+      ],
+      "upstream": "forum.f.droid.org",
+      "sni_fake": "forum.f-droid.org"
+    },
+    {
+      "name": "apkmirror.com",
+      "enabled": true,
+      "domains": [
+        "apkmirror.com"
+      ],
+      "upstream": "apkmirror.com",
+      "sni_fake": "apkmirror.com"
+    },
+    {
+      "name": "amazon.co.jp",
+      "enabled": true,
+      "domains": [
+        "amazon.co.jp"
+      ],
+      "upstream": "amazon.co.jp",
+      "sni_fake": "amazon.com"
+    },
+    {
+      "name": "nytimes.com",
+      "enabled": true,
+      "domains": [
+        "et.nytimes.com",
+        "nyt.com",
+        "nytimes.com"
+      ],
+      "upstream": "www.nytimes.com",
+      "sni_fake": "nytimes.com"
+    },
+    {
+      "name": "bbc.com",
+      "enabled": true,
+      "domains": [
+        "api.bbc.com",
+        "bbc.com"
+      ],
+      "upstream": "bbc.com",
+      "sni_fake": "bbc.com"
+    },
+    {
+      "name": "bbci.co.uk",
+      "enabled": true,
+      "domains": [
+        "api.bbc.co.uk",
+        "api.bbci.co.uk",
+        "bbc.co.uk",
+        "bbci.co.uk",
+        "files.bbci.co.uk",
+        "live.bbc.co.uk",
+        "static.bbci.co.uk"
+      ],
+      "upstream": "bbci.co.uk",
+      "sni_fake": "bbci.co.uk"
+    },
+    {
+      "name": "etsy.com",
+      "enabled": true,
+      "domains": [
+        "etsy.com"
+      ],
+      "upstream": "etsy.com",
+      "sni_fake": "etsy.com"
+    },
+    {
+      "name": "ok.ru",
+      "enabled": true,
+      "domains": [
+        "ms.ok.ru",
+        "ok.ru"
+      ],
+      "upstream": "ok.ru",
+      "sni_fake": "ok.ru"
+    },
+    {
+      "name": "z-lib.help",
+      "enabled": true,
+      "domains": [
+        "z-lib.help",
+        "z-library.sk"
+      ],
+      "upstream": "1lib.sk",
+      "sni_fake": "z-lib.help"
+    },
+    {
+      "name": "proton.me",
+      "enabled": true,
+      "domains": [
+        "proton.me"
+      ],
+      "upstream": "proton.me",
+      "sni_fake": "proton.me"
+    },
+    {
+      "name": "account.proton.me",
+      "enabled": true,
+      "domains": [
+        "account.proton.me"
+      ],
+      "upstream": "185.70.42.36:443",
+      "sni_fake": "account.proton.me"
+    },
+    {
+      "name": "account-api.proton.me",
+      "enabled": true,
+      "domains": [
+        "account-api.proton.me"
+      ],
+      "upstream": "185.70.42.20:443",
+      "sni_fake": "account-api.proton.me"
+    },
+    {
+      "name": "mail.proton.me",
+      "enabled": true,
+      "domains": [
+        "mail.proton.me"
+      ],
+      "upstream": "185.70.42.37:443",
+      "sni_fake": "mail.proton.me"
+    },
+    {
+      "name": "calendar.proton.me",
+      "enabled": true,
+      "domains": [
+        "calendar.proton.me"
+      ],
+      "upstream": "185.70.42.39:443",
+      "sni_fake": "calendar.proton.me"
+    },
+    {
+      "name": "drive.proton.me",
+      "enabled": true,
+      "domains": [
+        "drive.proton.me"
+      ],
+      "upstream": "185.70.42.40:443",
+      "sni_fake": "drive.proton.me"
+    },
+    {
+      "name": "pass.proton.me",
+      "enabled": true,
+      "domains": [
+        "pass.proton.me"
+      ],
+      "upstream": "185.70.42.63:443",
+      "sni_fake": "pass.proton.me"
+    },
+    {
+      "name": "gelbooru.com",
+      "enabled": true,
+      "domains": [
+        "gelbooru.com"
+      ],
+      "upstream": "gelbooru.com",
+      "sni_fake": "gelbooru.com"
+    },
+    {
+      "name": "github.com",
+      "enabled": true,
+      "domains": [
+        "gist.github.com",
+        "github.com",
+        "www.github.com"
+      ],
+      "upstream": "github.com",
+      "sni_fake": "github.com"
+    },
+    {
+      "name": "codeload.github.com",
+      "enabled": true,
+      "domains": [
+        "codeload.github.com"
+      ],
+      "upstream": "codeload.github.com",
+      "sni_fake": "codeload.github.com"
+    },
+    {
+      "name": "api.github.com",
+      "enabled": true,
+      "domains": [
+        "api.github.com",
+        "lfs.github.com"
+      ],
+      "upstream": "api.github.com",
+      "sni_fake": "api.github.com"
+    },
+    {
+      "name": "objects-origin.githubusercontent.com",
+      "enabled": true,
+      "domains": [
+        "objects-origin.githubusercontent.com"
+      ],
+      "upstream": "edu.github.com",
+      "sni_fake": "objects-origin.githubusercontent.com"
+    },
+    {
+      "name": "redirect.github.com",
+      "enabled": true,
+      "domains": [
+        "community.github.com",
+        "copilot.github.com",
+        "redirect.github.com",
+        "services.github.com"
+      ],
+      "upstream": "redirect.github.com",
+      "sni_fake": "redirect.github.com"
+    },
+    {
+      "name": "education.github.com",
+      "enabled": true,
+      "domains": [
+        "central.github.com",
+        "classroom.github.com",
+        "collector.github.com",
+        "education.github.com",
+        "enterprise.github.com"
+      ],
+      "upstream": "edu.github.com",
+      "sni_fake": "education.github.com"
+    },
+    {
+      "name": "githubusercontent.com",
+      "enabled": true,
+      "domains": [
+        "analytics.githubassets.com",
+        "assets-cdn.github.com",
+        "desktop.github.com",
+        "developer.github.com",
+        "git-lfs.github.com",
+        "github.io",
+        "githubusercontent.com",
+        "guides.github.com",
+        "lab.github.com",
+        "pages.github.com",
+        "partner.github.com",
+        "resources.github.com",
+        "support.github.com",
+        "www.github.io"
+      ],
+      "upstream": "githubusercontent.com",
+      "sni_fake": "githubusercontent.com"
+    },
+    {
+      "name": "docs.github.com",
+      "enabled": true,
+      "domains": [
+        "docs.github.com",
+        "githubassets.com"
+      ],
+      "upstream": "githubassets.com",
+      "sni_fake": "docs.github.com"
+    },
+    {
+      "name": "external-content.duckduckgo.com$",
+      "enabled": true,
+      "domains": [
+        "external-content.duckduckgo.com$"
+      ],
+      "upstream": "external.content.duckduckgo.com",
+      "sni_fake": "external-content.duckduckgo.com$"
+    },
+    {
+      "name": "duckduckgo.com",
+      "enabled": true,
+      "domains": [
+        "duckduckgo.com"
+      ],
+      "upstream": "duckduckgo.com",
+      "sni_fake": "duckduckgo.com"
+    },
+    {
+      "name": "greasyfork.org",
+      "enabled": true,
+      "domains": [
+        "greasyfork.org"
+      ],
+      "upstream": "greasyfork.org",
+      "sni_fake": "greasyfork.org"
+    },
+    {
+      "name": "facebook.com",
+      "enabled": true,
+      "domains": [
+        "business.whatsapp.com",
+        "facebook.com",
+        "fbcdn.net"
+      ],
+      "upstream": "157.240.22.169",
+      "sni_fake": "facebook.com"
+    },
+    {
+      "name": "instagram.com",
+      "enabled": true,
+      "domains": [
+        "cdninstagram.com",
+        "ig.me",
+        "instagr.am",
+        "instagram.com",
+        "static.cdninstagram.com"
+      ],
+      "upstream": "157.240.236.174",
+      "sni_fake": "instagram.com"
+    },
+    {
+      "name": "twitter.com",
+      "enabled": true,
+      "domains": [
+        "t.co",
+        "twitter.com",
+        "x.com"
+      ],
+      "upstream": "69.195.183.139",
+      "sni_fake": "twitter.com"
+    },
+    {
+      "name": "twimg.com",
+      "enabled": true,
+      "domains": [
+        "twimg.com"
+      ],
+      "upstream": "146.75.72.157",
+      "sni_fake": "twimg.com"
+    },
+    {
+      "name": "whatsapp.com",
+      "enabled": true,
+      "domains": [
+        "whatsapp.com",
+        "whatsapp.net"
+      ],
+      "upstream": "157.240.225.60",
+      "sni_fake": "whatsapp.com"
+    },
+    {
+      "name": "images.prismic.io",
+      "enabled": true,
+      "domains": [
+        "images.prismic.io"
+      ],
+      "upstream": "images.prismic.io",
+      "sni_fake": "images.prismic.io"
+    },
+    {
+      "name": "pinterest.com",
+      "enabled": true,
+      "domains": [
+        "pinimg.com",
+        "pinterest.com"
+      ],
+      "upstream": "151.101.0.84",
+      "sni_fake": "pinterest.com"
+    },
+    {
+      "name": "rutube.ru",
+      "enabled": true,
+      "domains": [
+        "rutube.ru"
+      ],
+      "upstream": "109.238.90.239",
+      "sni_fake": "rutube.ru"
+    },
+    {
+      "name": "huggingface.co",
+      "enabled": true,
+      "domains": [
+        "cdn-avatars.huggingface.co",
+        "cdn-uploads.huggingface.co",
+        "discuss.huggingface.co",
+        "huggingface.co",
+        "status.huggingface.co"
+      ],
+      "upstream": "3.167.200.113",
+      "sni_fake": "huggingface.co"
+    },
+    {
+      "name": "rumble.com",
+      "enabled": true,
+      "domains": [
+        "rumble.com"
+      ],
+      "upstream": "205.220.231.24",
+      "sni_fake": "rumble.com"
+    },
+    {
+      "name": "reddit.com",
+      "enabled": true,
+      "domains": [
+        "redd.it",
+        "reddit.com",
+        "redditmedia.com",
+        "redditstatic.com"
+      ],
+      "upstream": "146.75.33.140",
+      "sni_fake": "reddit.com"
+    },
+    {
+      "name": "assets.twitch.tv",
+      "enabled": true,
+      "domains": [
+        "assets.twitch.tv",
+        "irc-ws.chat.twitch.tv",
+        "panels.twitch.tv",
+        "passport.twitch.tv"
+      ],
+      "upstream": "3.167.200.113",
+      "sni_fake": "assets.twitch.tv"
+    },
+    {
+      "name": "twitch.tv",
+      "enabled": true,
+      "domains": [
+        "gql.twitch.tv",
+        "m.twitch.tv",
+        "twitch.tv"
+      ],
+      "upstream": "151.101.194.167",
+      "sni_fake": "twitch.tv"
+    },
+    {
+      "name": "store.steampowered.com",
+      "enabled": true,
+      "domains": [
+        "store.steampowered.com"
+      ],
+      "upstream": "23.46.197.62",
+      "sni_fake": "store.steampowered.com"
+    },
+    {
+      "name": "pluto.web.telegram.org",
+      "enabled": true,
+      "domains": [
+        "aurora-1.web.telegram.org",
+        "aurora.web.telegram.org",
+        "pluto-1.web.telegram.org",
+        "pluto.web.telegram.org"
+      ],
+      "upstream": "pluto.web.telegram.org",
+      "sni_fake": "pluto.web.telegram.org"
+    },
+    {
+      "name": "kws1.web.telegram.org",
+      "enabled": true,
+      "domains": [
+        "kws1-1.web.telegram.org",
+        "kws1.web.telegram.org",
+        "kws3-1.web.telegram.org",
+        "kws3.web.telegram.org",
+        "kws5-1.web.telegram.org",
+        "kws5.web.telegram.org"
+      ],
+      "upstream": "pluto.web.telegram.org",
+      "sni_fake": "kws1.web.telegram.org"
+    },
+    {
+      "name": "kws2.web.telegram.org",
+      "enabled": true,
+      "domains": [
+        "kws2-1.web.telegram.org",
+        "kws2.web.telegram.org",
+        "kws4-1.web.telegram.org",
+        "kws4.web.telegram.org",
+        "venus-1.web.telegram.org",
+        "venus.web.telegram.org",
+        "vesta-1.web.telegram.org",
+        "vesta.web.telegram.org"
+      ],
+      "upstream": "kws2.kw4.venus.vesta.web.telegram.org",
+      "sni_fake": "kws2.web.telegram.org"
+    },
+    {
+      "name": "flora-1.web.telegram.org",
+      "enabled": true,
+      "domains": [
+        "flora-1.web.telegram.org"
+      ],
+      "upstream": "flora.1.web.telegram.org",
+      "sni_fake": "flora-1.web.telegram.org"
+    },
+    {
+      "name": "flora.web.telegram.org",
+      "enabled": true,
+      "domains": [
+        "flora.web.telegram.org",
+        "web.telegram.org"
+      ],
+      "upstream": "149.154.170.200",
+      "sni_fake": "flora.web.telegram.org"
+    },
+    {
+      "name": "telegram.org",
+      "enabled": true,
+      "domains": [
+        "t.me",
+        "telegram.me",
+        "telegram.org",
+        "telesco.pe",
+        "tg.dev"
+      ],
+      "upstream": "136.244.94.246",
+      "sni_fake": "telegram.org"
+    },
+    {
+      "name": "cdn1.cdn-telegram.org",
+      "enabled": true,
+      "domains": [
+        "cdn1.cdn-telegram.org"
+      ],
+      "upstream": "34.111.15.3",
+      "sni_fake": "cdn1.cdn-telegram.org"
+    },
+    {
+      "name": "cdn4.cdn-telegram.org",
+      "enabled": true,
+      "domains": [
+        "cdn4.cdn-telegram.org"
+      ],
+      "upstream": "34.111.35.152",
+      "sni_fake": "cdn4.cdn-telegram.org"
+    },
+    {
+      "name": "cdn5.cdn-telegram.org",
+      "enabled": true,
+      "domains": [
+        "cdn5.cdn-telegram.org"
+      ],
+      "upstream": "34.111.108.175",
+      "sni_fake": "cdn5.cdn-telegram.org"
+    },
+    {
+      "name": "v2ex.com",
+      "enabled": true,
+      "domains": [
+        "v2ex.com"
+      ],
+      "upstream": "v2ex.com",
+      "sni_fake": "v2ex.com"
+    },
+    {
+      "name": "onedrive.live.com",
+      "enabled": true,
+      "domains": [
+        "onedrive.live.com"
+      ],
+      "upstream": "13.107.42.13",
+      "sni_fake": "onedrive.live.com"
+    },
+    {
+      "name": "mega.io",
+      "enabled": true,
+      "domains": [
+        "mega.io"
+      ],
+      "upstream": "66.203.127.11",
+      "sni_fake": "mega.io"
+    },
+    {
+      "name": "mega.nz",
+      "enabled": true,
+      "domains": [
+        "mega.nz"
+      ],
+      "upstream": "31.216.144.5",
+      "sni_fake": "mega.nz"
+    },
+    {
+      "name": "api.mega.co.nz",
+      "enabled": true,
+      "domains": [
+        "api.mega.co.nz"
+      ],
+      "upstream": "66.203.125.15",
+      "sni_fake": "api.mega.co.nz"
+    },
+    {
+      "name": "rfi.fr",
+      "enabled": true,
+      "domains": [
+        "rfi.fr"
+      ],
+      "upstream": "118.214.247.61",
+      "sni_fake": "rfi.fr"
+    },
+    {
+      "name": "graphql.api.dailymotion.com",
+      "enabled": true,
+      "domains": [
+        "graphql.api.dailymotion.com"
+      ],
+      "upstream": "34.84.14.157",
+      "sni_fake": "graphql.api.dailymotion.com"
+    },
+    {
+      "name": "geo.dailymotion.com",
+      "enabled": true,
+      "domains": [
+        "geo.dailymotion.com",
+        "geo.player.dailymotion.com"
+      ],
+      "upstream": "35.82.199.74",
+      "sni_fake": "geo.dailymotion.com"
+    },
+    {
+      "name": "dmads.dailymotion.com",
+      "enabled": true,
+      "domains": [
+        "dmads.dailymotion.com"
+      ],
+      "upstream": "65.8.161.92",
+      "sni_fake": "dmads.dailymotion.com"
+    },
+    {
+      "name": "dailymotion.com",
+      "enabled": true,
+      "domains": [
+        "dailymotion.com"
+      ],
+      "upstream": "195.8.215.136",
+      "sni_fake": "dailymotion.com"
+    },
+    {
+      "name": "dailymotion.com",
+      "enabled": true,
+      "domains": [
+        "dailymotion.com"
+      ],
+      "upstream": "34.84.14.157",
+      "sni_fake": "dailymotion.com"
+    },
+    {
+      "name": "gravatar.com",
+      "enabled": true,
+      "domains": [
+        "gravatar.com"
+      ],
+      "upstream": "192.0.80.240",
+      "sni_fake": "gravatar.com"
+    },
+    {
+      "name": "patreon.com",
+      "enabled": true,
+      "domains": [
+        "patreon.com"
+      ],
+      "upstream": "104.16.25.14",
+      "sni_fake": "patreon.com"
+    },
+    {
+      "name": "patreonusercontent.com",
+      "enabled": true,
+      "domains": [
+        "patreonusercontent.com"
+      ],
+      "upstream": "104.18.70.106",
+      "sni_fake": "patreonusercontent.com"
+    },
+    {
+      "name": "identity.flickr.com",
+      "enabled": true,
+      "domains": [
+        "identity.flickr.com"
+      ],
+      "upstream": "3.209.240.130",
+      "sni_fake": "identity.flickr.com"
+    },
+    {
+      "name": "flickr.com",
+      "enabled": true,
+      "domains": [
+        "flickr.com"
+      ],
+      "upstream": "13.33.142.102",
+      "sni_fake": "flickr.com"
+    },
+    {
+      "name": "imgur.com",
+      "enabled": true,
+      "domains": [
+        "imgur.com"
+      ],
+      "upstream": "199.232.196.193",
+      "sni_fake": "imgur.com"
+    },
+    {
+      "name": "thetvdb.com",
+      "enabled": true,
+      "domains": [
+        "thetvdb.com"
+      ],
+      "upstream": "13.35.222.88",
+      "sni_fake": "thetvdb.com"
+    },
+    {
+      "name": "vercel.app",
+      "enabled": true,
+      "domains": [
+        "vercel.app"
+      ],
+      "upstream": "64.29.17.193",
+      "sni_fake": "vercel.com"
+    },
+    {
+      "name": "hub.docker.com",
+      "enabled": true,
+      "domains": [
+        "hub.docker.com"
+      ],
+      "upstream": "hub.docker.com",
+      "sni_fake": "hub.docker.com"
+    },
+    {
+      "name": "prod-publishers-content.s3.us-east-1.amazonaws.com",
+      "enabled": true,
+      "domains": [
+        "prod-publishers-content.s3.us-east-1.amazonaws.com"
+      ],
+      "upstream": "prod.publishers.content.s3.us.east.1.amazonaws.com",
+      "sni_fake": "prod-publishers-content.s3.us-east-1.amazonaws.com"
+    },
+    {
+      "name": "xvideos.com",
+      "enabled": true,
+      "domains": [
+        "off",
+        "xvideos.com"
+      ],
+      "upstream": "xvideos.com",
+      "sni_fake": "xvideos.com"
+    },
+    {
+      "name": "xnxx.com",
+      "enabled": true,
+      "domains": [
+        "off",
+        "xnxx.com"
+      ],
+      "upstream": "xnxx.com",
+      "sni_fake": "xnxx.com"
+    },
+    {
+      "name": "download.tails.net",
+      "enabled": true,
+      "domains": [
+        "download.tails.net"
+      ],
+      "upstream": "204.13.164.63:443",
+      "sni_fake": "download.tails.net"
+    },
+    {
+      "name": "quora.com",
+      "enabled": true,
+      "domains": [
+        "quora.com",
+        "tch.quora.com",
+        "www.quora.com",
+        "www.tch.quora.com"
+      ],
+      "upstream": "quora.com",
+      "sni_fake": "fs.quoracdn.net"
+    },
+    {
+      "name": "audiomack.com",
+      "enabled": true,
+      "domains": [
+        "audiomack.com",
+        "off",
+        "prod.us-east-1.aws.audiomack.com"
+      ],
+      "upstream": "audiomack.com",
+      "sni_fake": "audiomack.com"
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "version": "1.0",
+  "type": "transparent",
+  "rules": [
+    {
+      "name": "gstatic.com",
+      "enabled": true,
+      "domains": [
+        "gstatic.com"
+      ],
+      "upstream": "www.gstatic.com",
+      "sni_fake": "g.cn"
+    },
+    {
+      "name": "gemini.google.com",
+      "enabled": true,
+      "domains": [
+        "gemini.google.com"
+      ],
+      "upstream": "gemini.google.com",
+      "sni_fake": "g.cn"
+    },
+    {
+      "name": "youtube.com",
+      "enabled": true,
+      "domains": [
+        "gdata.youtube.com",
+        "upload.youtube.com",
+        "uploads.stage.gdata.youtube.com",
+        "usercontent.youtube.com",
+        "youtube-nocookie.com",
+        "youtube.com",
+        "ytimg.com"
+      ],
+      "upstream": "youtube.com",
+      "sni_fake": "g.cn"
+    },
+    {
+      "name": "googlevideo.com",
+      "enabled": true,
+      "domains": [
+        "googlevideo.com"
+      ],
+      "upstream": "$1.gvt1.com",
+      "sni_fake": "g.cn"
+    }
+  ]
+}
