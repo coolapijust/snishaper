@@ -2,11 +2,18 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"log"
+	"net"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
+	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"snishaper/cert"
@@ -15,13 +22,92 @@ import (
 )
 
 type App struct {
-	ctx          context.Context
+	ctx         context.Context
 	proxyServer *proxy.ProxyServer
 	certManager *cert.CertManager
 	ruleManager *proxy.RuleManager
 	certPath    string
 	logPath     string
 	logFile     *os.File
+	logBuffer   *ringLogWriter
+}
+
+type ringLogWriter struct {
+	mu      sync.Mutex
+	lines   []string
+	pending string
+	max     int
+}
+
+func newRingLogWriter(max int) *ringLogWriter {
+	if max <= 0 {
+		max = 1000
+	}
+	return &ringLogWriter{
+		lines: make([]string, 0, max),
+		max:   max,
+	}
+}
+
+func (w *ringLogWriter) Write(p []byte) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	text := w.pending + strings.ReplaceAll(string(p), "\r\n", "\n")
+	parts := strings.Split(text, "\n")
+	if len(parts) == 0 {
+		return len(p), nil
+	}
+	w.pending = parts[len(parts)-1]
+	for _, line := range parts[:len(parts)-1] {
+		if line == "" {
+			continue
+		}
+		w.lines = append(w.lines, line)
+		if len(w.lines) > w.max {
+			w.lines = w.lines[len(w.lines)-w.max:]
+		}
+	}
+	return len(p), nil
+}
+
+func (w *ringLogWriter) Snapshot(limit int) []string {
+	if limit <= 0 {
+		limit = 200
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	total := len(w.lines)
+	if total == 0 {
+		return []string{}
+	}
+	if limit > total {
+		limit = total
+	}
+	start := total - limit
+	out := make([]string, limit)
+	copy(out, w.lines[start:])
+	return out
+}
+
+func (w *ringLogWriter) Clear() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.lines = w.lines[:0]
+	w.pending = ""
+}
+
+func (w *ringLogWriter) AppendLine(line string) {
+	if line == "" {
+		return
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.lines = append(w.lines, line)
+	if len(w.lines) > w.max {
+		w.lines = w.lines[len(w.lines)-w.max:]
+	}
 }
 
 func NewApp() *App {
@@ -40,6 +126,8 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	a.setupFileLogger()
+	log.Printf("[startup] SniShaper startup hook entered")
+	a.appendLog("[startup] in-memory log channel ready")
 	runtime.LogInfo(ctx, "[startup] SniShaper starting...")
 
 	var err error
@@ -87,15 +175,77 @@ func (a *App) shutdown(ctx context.Context) {
 }
 
 func (a *App) setupFileLogger() {
+	if a.logBuffer == nil {
+		a.logBuffer = newRingLogWriter(5000)
+	}
+
 	f, err := os.OpenFile(a.logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
+		log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+		log.SetOutput(io.MultiWriter(os.Stdout, a.logBuffer))
 		log.Printf("[startup] Failed to open log file %s: %v", a.logPath, err)
 		return
 	}
 	a.logFile = f
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
-	log.SetOutput(io.MultiWriter(os.Stdout, f))
+	log.SetOutput(io.MultiWriter(os.Stdout, f, a.logBuffer))
 	log.Printf("[startup] Logging to %s", a.logPath)
+	a.appendLog("[startup] file logger configured")
+}
+
+func (a *App) appendLog(message string) {
+	if a.logBuffer == nil {
+		a.logBuffer = newRingLogWriter(5000)
+	}
+	a.logBuffer.AppendLine(message)
+}
+
+func (a *App) GetRecentLogs(limit int) string {
+	if limit <= 0 {
+		limit = 200
+	}
+	if limit > 2000 {
+		limit = 2000
+	}
+
+	if a.logBuffer != nil {
+		lines := a.logBuffer.Snapshot(limit)
+		if len(lines) > 0 {
+			return strings.Join(lines, "\n")
+		}
+	}
+
+	a.appendLog("[diag] GetRecentLogs fallback to file-read path")
+
+	data, err := os.ReadFile(a.logPath)
+	if err != nil {
+		return ""
+	}
+
+	text := strings.ReplaceAll(string(data), "\r\n", "\n")
+	lines := strings.Split(text, "\n")
+	if len(lines) > 0 && lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+	if len(lines) > limit {
+		lines = lines[len(lines)-limit:]
+	}
+	return strings.Join(lines, "\n")
+}
+
+func (a *App) ClearLogs() error {
+	if a.logBuffer != nil {
+		a.logBuffer.Clear()
+	}
+	if a.logFile != nil {
+		_ = a.logFile.Close()
+		a.logFile = nil
+	}
+	if err := os.WriteFile(a.logPath, []byte{}, 0644); err != nil {
+		return err
+	}
+	a.setupFileLogger()
+	return nil
 }
 
 func (a *App) Greet(name string) string {
@@ -104,12 +254,32 @@ func (a *App) Greet(name string) string {
 
 func (a *App) StartProxy() error {
 	runtime.LogInfo(a.ctx, "Starting proxy server...")
-	return a.proxyServer.Start()
+	a.appendLog("[action] StartProxy called")
+	err := a.proxyServer.Start()
+	if err != nil {
+		a.appendLog("[error] StartProxy failed: " + err.Error())
+		return err
+	}
+	addr := a.proxyServer.GetListenAddr()
+	if err := a.waitForProxyListen(addr, 2*time.Second); err != nil {
+		_ = a.proxyServer.Stop()
+		a.appendLog("[error] StartProxy self-check failed: " + err.Error())
+		return fmt.Errorf("proxy started but not listening on %s: %w", addr, err)
+	}
+	a.appendLog("[action] StartProxy success")
+	return nil
 }
 
 func (a *App) StopProxy() error {
 	runtime.LogInfo(a.ctx, "Stopping proxy server...")
-	return a.proxyServer.Stop()
+	a.appendLog("[action] StopProxy called")
+	err := a.proxyServer.Stop()
+	if err != nil {
+		a.appendLog("[error] StopProxy failed: " + err.Error())
+		return err
+	}
+	a.appendLog("[action] StopProxy success")
+	return nil
 }
 
 func (a *App) IsProxyRunning() bool {
@@ -137,7 +307,12 @@ func (a *App) SetListenPort(port int) error {
 
 func (a *App) SetProxyMode(mode string) error {
 	runtime.LogInfo(a.ctx, "[mode] Set proxy mode: "+mode)
-	return a.proxyServer.SetMode(mode)
+	a.appendLog("[action] SetProxyMode: " + mode)
+	err := a.proxyServer.SetMode(mode)
+	if err != nil {
+		a.appendLog("[error] SetProxyMode failed: " + err.Error())
+	}
+	return err
 }
 
 func (a *App) GetProxyMode() string {
@@ -248,10 +423,21 @@ func (a *App) ImportConfig(content string) error {
 	return a.ruleManager.ImportConfig(content)
 }
 
+func (a *App) ImportConfigWithSummary(content string) (proxy.ImportSummary, error) {
+	return a.ruleManager.ImportConfigWithSummary(content)
+}
+
 type SystemProxyStatus struct {
 	Enabled  bool
 	Server   string
 	Override string
+}
+
+type ProxyDiagnostics struct {
+	Accepted      int64
+	Requests      int64
+	Connects      int64
+	RecentIngress []string
 }
 
 func (a *App) GetSystemProxyStatus() SystemProxyStatus {
@@ -265,17 +451,122 @@ func (a *App) GetSystemProxyStatus() SystemProxyStatus {
 
 func (a *App) EnableSystemProxy() error {
 	runtime.LogInfo(a.ctx, "[sysproxy] Enabling system proxy...")
+	a.appendLog("[action] EnableSystemProxy called")
 	addr := a.proxyServer.GetListenAddr()
 	var port int
 	fmt.Sscanf(addr, "127.0.0.1:%d", &port)
 	if port == 0 {
 		port = 8080
 	}
+	if err := a.waitForProxyListen(addr, 1200*time.Millisecond); err != nil {
+		a.appendLog("[error] EnableSystemProxy blocked: proxy not listening on " + addr)
+		return fmt.Errorf("proxy is not listening on %s", addr)
+	}
 	runtime.LogInfo(a.ctx, fmt.Sprintf("[sysproxy] Using port %d", port))
-	return sysproxy.EnableSystemProxy(port)
+	err := sysproxy.EnableSystemProxy(port)
+	if err != nil {
+		a.appendLog("[error] EnableSystemProxy failed: " + err.Error())
+		return err
+	}
+	a.appendLog(fmt.Sprintf("[action] EnableSystemProxy success: 127.0.0.1:%d", port))
+	return nil
 }
 
 func (a *App) DisableSystemProxy() error {
 	runtime.LogInfo(a.ctx, "[sysproxy] Disabling system proxy...")
-	return sysproxy.DisableSystemProxy()
+	a.appendLog("[action] DisableSystemProxy called")
+	err := sysproxy.DisableSystemProxy()
+	if err != nil {
+		a.appendLog("[error] DisableSystemProxy failed: " + err.Error())
+		return err
+	}
+	a.appendLog("[action] DisableSystemProxy success")
+	return nil
+}
+
+func (a *App) waitForProxyListen(addr string, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	var lastErr error
+	for time.Now().Before(deadline) {
+		conn, err := net.DialTimeout("tcp", addr, 250*time.Millisecond)
+		if err == nil {
+			_ = conn.Close()
+			return nil
+		}
+		lastErr = err
+		time.Sleep(80 * time.Millisecond)
+	}
+	if lastErr == nil {
+		lastErr = fmt.Errorf("timeout")
+	}
+	return lastErr
+}
+
+func (a *App) GetProxyDiagnostics() ProxyDiagnostics {
+	accepted, requests, connects, recent := a.proxyServer.GetDiagnostics()
+	return ProxyDiagnostics{
+		Accepted:      accepted,
+		Requests:      requests,
+		Connects:      connects,
+		RecentIngress: recent,
+	}
+}
+
+func (a *App) GetRuleHitCounts() map[string]int64 {
+	return a.ruleManager.GetRuleHitCounts()
+}
+
+func (a *App) ProxySelfCheck() string {
+	addr := a.proxyServer.GetListenAddr()
+	a.appendLog("[diag] ProxySelfCheck started via " + addr)
+
+	if !a.proxyServer.IsRunning() {
+		msg := "[diag] ProxySelfCheck failed: proxy not running"
+		a.appendLog(msg)
+		return msg
+	}
+
+	proxyURL, err := url.Parse("http://" + addr)
+	if err != nil {
+		msg := "[diag] ProxySelfCheck failed: invalid proxy addr: " + err.Error()
+		a.appendLog(msg)
+		return msg
+	}
+
+	transport := &http.Transport{
+		Proxy: http.ProxyURL(proxyURL),
+		DialContext: (&net.Dialer{
+			Timeout:   6 * time.Second,
+			KeepAlive: 10 * time.Second,
+		}).DialContext,
+		TLSHandshakeTimeout:   8 * time.Second,
+		ResponseHeaderTimeout: 10 * time.Second,
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	}
+	client := &http.Client{
+		Transport: transport,
+		Timeout:   15 * time.Second,
+	}
+
+	req, err := http.NewRequest(http.MethodGet, "https://example.com", nil)
+	if err != nil {
+		msg := "[diag] ProxySelfCheck failed: " + err.Error()
+		a.appendLog(msg)
+		return msg
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		msg := "[diag] ProxySelfCheck failed: " + err.Error()
+		a.appendLog(msg)
+		return msg
+	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 2048))
+
+	msg := fmt.Sprintf("[diag] ProxySelfCheck success: status=%d", resp.StatusCode)
+	a.appendLog(msg)
+	return msg
 }

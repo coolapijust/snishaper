@@ -3,6 +3,8 @@ package proxy
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
+	"strings"
 	"time"
 )
 
@@ -13,11 +15,24 @@ type ConfigFile struct {
 }
 
 type ConfigRule struct {
-	Name     string   `json:"name"`
-	Enabled  bool     `json:"enabled"`
-	Domains  []string `json:"domains"`
-	Upstream string   `json:"upstream,omitempty"`
-	SniFake  string   `json:"sni_fake,omitempty"`
+	Name          string   `json:"name"`
+	Website       string   `json:"website,omitempty"`
+	Enabled       bool     `json:"enabled"`
+	Domains       []string `json:"domains"`
+	Upstream      string   `json:"upstream,omitempty"`
+	Upstreams     []string `json:"upstreams,omitempty"`
+	SniFake       string   `json:"sni_fake,omitempty"`
+	ConnectPolicy string   `json:"connect_policy,omitempty"`
+	SniPolicy     string   `json:"sni_policy,omitempty"`
+	AlpnPolicy    string   `json:"alpn_policy,omitempty"`
+	UTLSPolicy    string   `json:"utls_policy,omitempty"`
+}
+
+type ImportSummary struct {
+	Total       int `json:"total"`
+	Added       int `json:"added"`
+	Overwritten int `json:"overwritten"`
+	Skipped     int `json:"skipped"`
 }
 
 func (rm *RuleManager) ExportConfig() (string, error) {
@@ -26,11 +41,17 @@ func (rm *RuleManager) ExportConfig() (string, error) {
 	rm.mu.RLock()
 	for _, sg := range rm.siteGroups {
 		rule := ConfigRule{
-			Name:     sg.Name,
-			Enabled:  sg.Enabled,
-			Domains:  sg.Domains,
-			Upstream: sg.Upstream,
-			SniFake:  sg.SniFake,
+			Name:          sg.Name,
+			Website:       sg.Website,
+			Enabled:       sg.Enabled,
+			Domains:       sg.Domains,
+			Upstream:      sg.Upstream,
+			Upstreams:     append([]string(nil), sg.Upstreams...),
+			SniFake:       sg.SniFake,
+			ConnectPolicy: sg.ConnectPolicy,
+			SniPolicy:     sg.SniPolicy,
+			AlpnPolicy:    sg.AlpnPolicy,
+			UTLSPolicy:    sg.UTLSPolicy,
 		}
 
 		if sg.Mode == "mitm" {
@@ -72,40 +93,186 @@ func (rm *RuleManager) ExportConfig() (string, error) {
 	return string(output), nil
 }
 
+func normalizeDomainsForKey(domains []string) string {
+	if len(domains) == 0 {
+		return ""
+	}
+	seen := make(map[string]struct{}, len(domains))
+	out := make([]string, 0, len(domains))
+	for _, d := range domains {
+		n := strings.ToLower(strings.TrimSpace(d))
+		if n == "" {
+			continue
+		}
+		if _, ok := seen[n]; ok {
+			continue
+		}
+		seen[n] = struct{}{}
+		out = append(out, n)
+	}
+	sort.Strings(out)
+	return strings.Join(out, ",")
+}
+
+func importMergeKey(sg SiteGroup) string {
+	mode := strings.ToLower(strings.TrimSpace(sg.Mode))
+	return mode + "|" + normalizeDomainsForKey(sg.Domains)
+}
+
 func (rm *RuleManager) ImportConfig(content string) error {
-	var data map[string]interface{}
-	if err := json.Unmarshal([]byte(content), &data); err != nil {
-		return fmt.Errorf("invalid JSON: %v", err)
+	_, err := rm.ImportConfigWithSummary(content)
+	return err
+}
+
+func (rm *RuleManager) ImportConfigWithSummary(content string) (ImportSummary, error) {
+	content = strings.TrimSpace(content)
+	if content == "" {
+		return ImportSummary{}, fmt.Errorf("empty config content")
 	}
 
-	rm.mu.Lock()
-	defer rm.mu.Unlock()
+	parseConfigPayload := func(payload []byte, forcedType string) ([]SiteGroup, int, error) {
+		var cfg ConfigFile
+		if err := json.Unmarshal(payload, &cfg); err != nil {
+			return nil, 0, err
+		}
 
-	for _, key := range []string{"mitm", "transparent"} {
-		if jsonStr, ok := data[key].(string); ok {
-			var config ConfigFile
-			if err := json.Unmarshal([]byte(jsonStr), &config); err != nil {
+		mode := strings.ToLower(strings.TrimSpace(cfg.Type))
+		if mode == "" {
+			mode = strings.ToLower(strings.TrimSpace(forcedType))
+		}
+		if mode != "mitm" && mode != "transparent" {
+			return nil, 0, fmt.Errorf("invalid or missing config type")
+		}
+
+		out := make([]SiteGroup, 0, len(cfg.Rules))
+		skipped := 0
+		for _, rule := range cfg.Rules {
+			if len(rule.Domains) == 0 {
+				skipped++
 				continue
 			}
+			sg := SiteGroup{
+				ID:            generateID(),
+				Name:          strings.TrimSpace(rule.Name),
+				Website:       strings.TrimSpace(rule.Website),
+				Domains:       rule.Domains,
+				Mode:          mode,
+				Upstream:      strings.TrimSpace(rule.Upstream),
+				Upstreams:     append([]string(nil), rule.Upstreams...),
+				SniFake:       strings.TrimSpace(rule.SniFake),
+				ConnectPolicy: strings.ToLower(strings.TrimSpace(rule.ConnectPolicy)),
+				SniPolicy:     strings.ToLower(strings.TrimSpace(rule.SniPolicy)),
+				AlpnPolicy:    strings.ToLower(strings.TrimSpace(rule.AlpnPolicy)),
+				UTLSPolicy:    strings.ToLower(strings.TrimSpace(rule.UTLSPolicy)),
+				Enabled:       rule.Enabled,
+			}
+			if sg.Name == "" {
+				sg.Name = sg.Domains[0]
+			}
+			if !sg.Enabled {
+				sg.Enabled = true
+			}
+			out = append(out, sg)
+		}
+		return out, skipped, nil
+	}
 
-			for _, rule := range config.Rules {
-				sg := SiteGroup{
-					ID:       generateID(),
-					Name:     rule.Name,
-					Domains:  rule.Domains,
-					Mode:     config.Type,
-					Upstream: rule.Upstream,
-					SniFake:  rule.SniFake,
-					Enabled:  rule.Enabled,
+	imported := make([]SiteGroup, 0, 64)
+	total := 0
+	skipped := 0
+
+	var wrapper map[string]interface{}
+	if err := json.Unmarshal([]byte(content), &wrapper); err == nil {
+		for _, key := range []string{"mitm", "transparent"} {
+			raw, ok := wrapper[key]
+			if !ok {
+				continue
+			}
+			switch v := raw.(type) {
+			case string:
+				sgs, partSkipped, err := parseConfigPayload([]byte(v), key)
+				if err != nil {
+					continue
 				}
-				rm.siteGroups = append(rm.siteGroups, sg)
+				total += len(sgs) + partSkipped
+				skipped += partSkipped
+				imported = append(imported, sgs...)
+			default:
+				payload, err := json.Marshal(v)
+				if err != nil {
+					continue
+				}
+				sgs, partSkipped, err := parseConfigPayload(payload, key)
+				if err != nil {
+					continue
+				}
+				total += len(sgs) + partSkipped
+				skipped += partSkipped
+				imported = append(imported, sgs...)
 			}
 		}
 	}
 
-	if len(rm.siteGroups) == 0 {
-		return fmt.Errorf("no valid rules found")
+	// Fallback: support direct single config file format:
+	// {"version":"2.0","type":"mitm","rules":[...]}
+	if len(imported) == 0 {
+		sgs, partSkipped, err := parseConfigPayload([]byte(content), "")
+		if err == nil {
+			total += len(sgs) + partSkipped
+			skipped += partSkipped
+			imported = append(imported, sgs...)
+		}
 	}
 
-	return nil
+	if len(imported) == 0 {
+		return ImportSummary{}, fmt.Errorf("no valid rules found")
+	}
+
+	rm.mu.Lock()
+	merged := append([]SiteGroup(nil), rm.siteGroups...)
+	index := make(map[string]int, len(merged))
+	for i, sg := range merged {
+		key := importMergeKey(sg)
+		if key == "|" {
+			continue
+		}
+		index[key] = i
+	}
+
+	added := 0
+	overwritten := 0
+	for _, sg := range imported {
+		key := importMergeKey(sg)
+		if key == "|" {
+			skipped++
+			continue
+		}
+		if idx, ok := index[key]; ok {
+			sg.ID = merged[idx].ID
+			merged[idx] = sg
+			overwritten++
+			continue
+		}
+		merged = append(merged, sg)
+		index[key] = len(merged) - 1
+		added++
+	}
+
+	rm.siteGroups = merged
+	rm.buildRules()
+	rm.mu.Unlock()
+
+	if err := rm.saveConfig(); err != nil {
+		return ImportSummary{}, err
+	}
+
+	if total == 0 {
+		total = len(imported) + skipped
+	}
+	return ImportSummary{
+		Total:       total,
+		Added:       added,
+		Overwritten: overwritten,
+		Skipped:     skipped,
+	}, nil
 }

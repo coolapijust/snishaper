@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -42,6 +43,7 @@ type ProxyServer struct {
 	certCache     map[string]*tls.Certificate
 	Fingerprint   string
 	certGenerator CertGenerator
+	recentIngress []string
 }
 
 type RuleManager struct {
@@ -49,17 +51,24 @@ type RuleManager struct {
 	siteGroups []SiteGroup
 	upstreams  []Upstream
 	configPath string
+	hitCount   map[string]int64
 	mu         sync.RWMutex
 }
 
 type SiteGroup struct {
-	ID       string   `json:"id"`
-	Name     string   `json:"name"`
-	Domains  []string `json:"domains"`
-	Mode     string   `json:"mode"`
-	Upstream string   `json:"upstream"`
-	SniFake  string   `json:"sni_fake"`
-	Enabled  bool     `json:"enabled"`
+	ID            string   `json:"id"`
+	Name          string   `json:"name"`
+	Website       string   `json:"website,omitempty"`
+	Domains       []string `json:"domains"`
+	Mode          string   `json:"mode"`
+	Upstream      string   `json:"upstream"`
+	Upstreams     []string `json:"upstreams,omitempty"`
+	SniFake       string   `json:"sni_fake"`
+	ConnectPolicy string   `json:"connect_policy,omitempty"` // "", "tunnel_origin", "tunnel_upstream", "mitm", "direct"
+	SniPolicy     string   `json:"sni_policy,omitempty"`     // "", "auto", "original", "fake", "upstream", "none"
+	AlpnPolicy    string   `json:"alpn_policy,omitempty"`    // "", "auto", "h1_only", "h2_h1"
+	UTLSPolicy    string   `json:"utls_policy,omitempty"`    // "", "auto", "on", "off"
+	Enabled       bool     `json:"enabled"`
 }
 
 type Upstream struct {
@@ -79,15 +88,66 @@ type Stats struct {
 	BytesIn  int64
 	BytesOut int64
 	Requests int64
+	Accepted int64
+	Connects int64
 	mu       sync.Mutex
 }
 
+type trackingListener struct {
+	net.Listener
+	proxy *ProxyServer
+}
+
+func (l *trackingListener) Accept() (net.Conn, error) {
+	conn, err := l.Listener.Accept()
+	if err != nil {
+		return nil, err
+	}
+	if l.proxy != nil {
+		l.proxy.trackAccepted(conn.RemoteAddr().String())
+	}
+	log.Printf("[Ingress] Accepted TCP from %s", conn.RemoteAddr())
+	return conn, nil
+}
+
 type Rule struct {
-	Domain   string
-	Upstream string
-	Mode     string // "mitm", "transparent", "direct"
-	SniFake  string
-	Enabled  bool
+	Domain        string
+	Upstream      string
+	Upstreams     []string
+	Mode          string // "mitm", "transparent", "direct"
+	SniFake       string
+	ConnectPolicy string // "", "tunnel_origin", "tunnel_upstream", "mitm", "direct"
+	SniPolicy     string // "", "auto", "original", "fake", "upstream", "none"
+	AlpnPolicy    string // "", "auto", "h1_only", "h2_h1"
+	UTLSPolicy    string // "", "auto", "on", "off"
+	Enabled       bool
+	SiteID        string
+}
+
+func mergeRule(base, overlay Rule) Rule {
+	out := base
+	if strings.TrimSpace(overlay.Upstream) != "" {
+		out.Upstream = overlay.Upstream
+	}
+	if len(overlay.Upstreams) > 0 {
+		out.Upstreams = append([]string(nil), overlay.Upstreams...)
+	}
+	if strings.TrimSpace(overlay.SniFake) != "" {
+		out.SniFake = overlay.SniFake
+	}
+	if strings.TrimSpace(overlay.ConnectPolicy) != "" {
+		out.ConnectPolicy = overlay.ConnectPolicy
+	}
+	if strings.TrimSpace(overlay.SniPolicy) != "" {
+		out.SniPolicy = overlay.SniPolicy
+	}
+	if strings.TrimSpace(overlay.AlpnPolicy) != "" {
+		out.AlpnPolicy = overlay.AlpnPolicy
+	}
+	if strings.TrimSpace(overlay.UTLSPolicy) != "" {
+		out.UTLSPolicy = overlay.UTLSPolicy
+	}
+	return out
 }
 
 type bufferedReadConn struct {
@@ -128,6 +188,104 @@ func normalizeHost(hostport string) string {
 	return strings.ToLower(hostport)
 }
 
+func cleanWebsiteToken(token string) string {
+	token = normalizeHost(token)
+	token = strings.TrimPrefix(token, "*.")
+	token = strings.TrimSuffix(token, "$")
+	token = strings.Trim(token, "[]")
+	if i := strings.Index(token, ":"); i >= 0 {
+		token = token[:i]
+	}
+	return token
+}
+
+func tokenMatchesDomain(token, domain string) bool {
+	token = cleanWebsiteToken(token)
+	domain = cleanWebsiteToken(domain)
+	if token == "" || domain == "" {
+		return false
+	}
+	return token == domain || strings.HasSuffix(token, "."+domain)
+}
+
+func inferWebsiteFromSiteGroup(sg SiteGroup) string {
+	tokens := []string{sg.Name, sg.Upstream, sg.SniFake}
+	tokens = append(tokens, sg.Domains...)
+
+	hasDomain := func(domains ...string) bool {
+		for _, t := range tokens {
+			for _, d := range domains {
+				if tokenMatchesDomain(t, d) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+
+	switch {
+	case hasDomain("google.com", "youtube.com", "gstatic.com", "googlevideo.com", "gvt1.com", "ytimg.com", "youtu.be", "ggpht.com"):
+		return "google"
+	case hasDomain("github.com", "githubusercontent.com", "githubassets.com", "github.io"):
+		return "github"
+	case hasDomain("telegram.org", "web.telegram.org", "cdn-telegram.org", "t.me", "telesco.pe", "tg.dev", "telegram.me"):
+		return "telegram"
+	case hasDomain("proton.me"):
+		return "proton"
+	case hasDomain("pixiv.net", "fanbox.cc", "pximg.net", "pixiv.org"):
+		return "pixiv"
+	case hasDomain("nyaa.si"):
+		return "nyaa"
+	case hasDomain("wikipedia.org", "wikimedia.org", "mediawiki.org", "wikibooks.org", "wikidata.org", "wikifunctions.org", "wikinews.org", "wikiquote.org", "wikisource.org", "wikiversity.org", "wikivoyage.org", "wiktionary.org"):
+		return "wikipedia"
+	case hasDomain("e-hentai.org", "exhentai.org", "ehgt.org", "hentaiverse.org", "ehwiki.org", "ehtracker.org"):
+		return "ehentai"
+	case hasDomain("facebook.com", "fbcdn.net", "instagram.com", "cdninstagram.com", "instagr.am", "ig.me", "whatsapp.com", "whatsapp.net"):
+		return "meta"
+	case hasDomain("twitter.com", "x.com", "t.co", "twimg.com"):
+		return "x"
+	case hasDomain("steamcommunity.com", "steampowered.com"):
+		return "steam"
+	case hasDomain("mega.nz", "mega.io", "mega.co.nz"):
+		return "mega"
+	case hasDomain("dailymotion.com"):
+		return "dailymotion"
+	case hasDomain("duckduckgo.com"):
+		return "duckduckgo"
+	case hasDomain("reddit.com", "redd.it", "redditmedia.com", "redditstatic.com"):
+		return "reddit"
+	case hasDomain("twitch.tv"):
+		return "twitch"
+	case hasDomain("bbc.com", "bbc.co.uk", "bbci.co.uk"):
+		return "bbc"
+	}
+
+	for _, d := range sg.Domains {
+		d = cleanWebsiteToken(d)
+		if d == "" || d == "off" {
+			continue
+		}
+		parts := strings.Split(d, ".")
+		if len(parts) >= 2 {
+			return parts[len(parts)-2]
+		}
+		return d
+	}
+
+	for _, t := range tokens {
+		t = cleanWebsiteToken(t)
+		if t == "" || t == "off" {
+			continue
+		}
+		parts := strings.Split(t, ".")
+		if len(parts) >= 2 {
+			return parts[len(parts)-2]
+		}
+		return t
+	}
+	return "misc"
+}
+
 func ensureAddrWithPort(addr, defaultPort string) string {
 	addr = strings.TrimSpace(addr)
 	if addr == "" {
@@ -164,16 +322,158 @@ func resolveUpstreamHost(targetHost, upstream string) string {
 	return upstream
 }
 
+func resolveRuleUpstream(targetHost string, rule Rule) string {
+	resolved := resolveUpstreamHost(targetHost, rule.Upstream)
+	trimmed := strings.TrimSpace(resolved)
+	if trimmed == "" && len(rule.Upstreams) > 0 {
+		return strings.Join(rule.Upstreams, ",")
+	}
+
+	low := strings.ToLower(trimmed)
+	if strings.HasPrefix(low, "$backend_ip") || strings.HasPrefix(low, "$upstream_host") || strings.HasPrefix(trimmed, "$") {
+		if len(rule.Upstreams) > 0 {
+			return strings.Join(rule.Upstreams, ",")
+		}
+		return net.JoinHostPort(targetHost, "443")
+	}
+
+	return resolved
+}
+
+func splitUpstreamCandidates(targetHost, upstream, defaultPort string) []string {
+	resolved := resolveUpstreamHost(targetHost, upstream)
+	if resolved == "" {
+		return nil
+	}
+	parts := strings.Split(resolved, ",")
+	out := make([]string, 0, len(parts))
+	seen := map[string]struct{}{}
+	for _, p := range parts {
+		addr := ensureAddrWithPort(strings.TrimSpace(p), defaultPort)
+		if addr == "" {
+			continue
+		}
+		if _, ok := seen[addr]; ok {
+			continue
+		}
+		seen[addr] = struct{}{}
+		out = append(out, addr)
+	}
+	return out
+}
+
+func firstUpstreamHost(targetHost, upstream string) string {
+	candidates := splitUpstreamCandidates(targetHost, upstream, "443")
+	if len(candidates) == 0 {
+		return ""
+	}
+	host, _, err := net.SplitHostPort(candidates[0])
+	if err != nil {
+		return normalizeHost(candidates[0])
+	}
+	return normalizeHost(host)
+}
+
 func hostMatchesDomain(host, domain string) bool {
 	host = strings.ToLower(strings.TrimSpace(host))
 	domain = strings.ToLower(strings.TrimSpace(domain))
 	if host == "" || domain == "" {
 		return false
 	}
+	domain = strings.TrimPrefix(domain, "*.")
+	domain = strings.TrimSuffix(domain, "$")
+
+	// Extended pattern syntax: google.com.* (or any base.*)
+	// Matches google.com.sg, www.google.com.sg, google.com.hk, etc.
+	if strings.HasSuffix(domain, ".*") {
+		base := strings.TrimSuffix(domain, ".*")
+		if base == "" {
+			return false
+		}
+		hostParts := strings.Split(host, ".")
+		baseParts := strings.Split(base, ".")
+		if len(hostParts) < len(baseParts)+1 {
+			return false
+		}
+		for i := 0; i+len(baseParts) < len(hostParts); i++ {
+			ok := true
+			for j := 0; j < len(baseParts); j++ {
+				if hostParts[i+j] != baseParts[j] {
+					ok = false
+					break
+				}
+			}
+			if ok {
+				return true
+			}
+		}
+		return false
+	}
+
 	if host == domain {
 		return true
 	}
 	return strings.HasSuffix(host, "."+domain)
+}
+
+func domainMatchScore(host, domain string) int {
+	host = strings.ToLower(strings.TrimSpace(host))
+	domain = strings.ToLower(strings.TrimSpace(domain))
+	if host == "" || domain == "" {
+		return -1
+	}
+
+	if strings.HasPrefix(domain, "~") {
+		pattern := strings.TrimSpace(strings.TrimPrefix(domain, "~"))
+		if pattern == "" {
+			return -1
+		}
+		re, err := regexp.Compile(pattern)
+		if err != nil {
+			return -1
+		}
+		if re.MatchString(host) {
+			return 900 + len(pattern) // exact(1000+) > regex(900+) > suffix/exact-domain
+		}
+		return -1
+	}
+
+	domain = strings.TrimPrefix(domain, "*.")
+	domain = strings.TrimSuffix(domain, "$")
+
+	// Pattern base.* => give base length score when matched.
+	if strings.HasSuffix(domain, ".*") {
+		base := strings.TrimSuffix(domain, ".*")
+		if base == "" {
+			return -1
+		}
+		hostParts := strings.Split(host, ".")
+		baseParts := strings.Split(base, ".")
+		if len(hostParts) < len(baseParts)+1 {
+			return -1
+		}
+		for i := 0; i+len(baseParts) < len(hostParts); i++ {
+			ok := true
+			for j := 0; j < len(baseParts); j++ {
+				if hostParts[i+j] != baseParts[j] {
+					ok = false
+					break
+				}
+			}
+			if ok {
+				return len(base)
+			}
+		}
+		return -1
+	}
+
+	if host == domain {
+		return len(domain) + 1000 // Prefer exact match over suffix match.
+	}
+	if strings.HasSuffix(host, "."+domain) {
+		return len(domain)
+	}
+	return -1
 }
 
 func isLiteralIP(host string) bool {
@@ -182,15 +482,46 @@ func isLiteralIP(host string) bool {
 
 func chooseUpstreamSNI(targetHost string, rule Rule) string {
 	targetHost = normalizeHost(targetHost)
+	hostAsToken := strings.Trim(targetHost, "[]")
+	hostAsToken = strings.ReplaceAll(hostAsToken, ".", "-")
+	hostAsToken = strings.ReplaceAll(hostAsToken, ":", "-")
+	hostAsToken = strings.TrimSpace(hostAsToken)
+	if hostAsToken == "" {
+		hostAsToken = "g-cn"
+	}
+	resolvedUpstream := resolveRuleUpstream(targetHost, rule)
+
+	switch strings.ToLower(strings.TrimSpace(rule.SniPolicy)) {
+	case "none":
+		// Explicitly disable SNI extension for upstream TLS ClientHello.
+		return ""
+	case "original":
+		return targetHost
+	case "fake":
+		if strings.TrimSpace(rule.SniFake) != "" {
+			return rule.SniFake
+		}
+		return hostAsToken
+	case "upstream":
+		if upstreamHost := firstUpstreamHost(targetHost, resolvedUpstream); upstreamHost != "" && !isLiteralIP(upstreamHost) {
+			return upstreamHost
+		}
+		return targetHost
+	}
+
 	// MITM mode's core behavior: if fake SNI is configured, always use it.
 	if strings.TrimSpace(rule.SniFake) != "" {
 		return rule.SniFake
 	}
-	if rule.Upstream != "" {
-		if upstreamHost := normalizeHost(resolveUpstreamHost(targetHost, rule.Upstream)); upstreamHost != "" {
-			return upstreamHost
+	if resolvedUpstream != "" {
+		if upstreamHost := firstUpstreamHost(targetHost, resolvedUpstream); upstreamHost != "" {
+			if !isLiteralIP(upstreamHost) && upstreamHost != targetHost {
+				return upstreamHost
+			}
 		}
 	}
+	// Auto mode should be predictable: when no fake/upstream SNI is available,
+	// fall back to original host instead of implicit camouflage.
 	return targetHost
 }
 
@@ -257,23 +588,47 @@ func (p *ProxyServer) Start() error {
 		return nil
 	}
 
-	p.Server = &http.Server{
-		Addr:         p.listenAddr,
+	srv := &http.Server{
+		Addr: p.listenAddr,
 		// Use raw handler instead of ServeMux: CONNECT uses authority-form
 		// and may not be routed by path-based muxes.
 		Handler:      http.HandlerFunc(p.handleRequest),
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 30 * time.Second,
 	}
+	listenAddr := p.listenAddr
+	p.mu.Unlock()
 
+	ln, err := net.Listen("tcp", listenAddr)
+	if err != nil {
+		return fmt.Errorf("failed to listen on %s: %w", listenAddr, err)
+	}
+
+	p.mu.Lock()
+	// Re-check state in case Stop/Start race happened while binding.
+	if p.running {
+		p.mu.Unlock()
+		_ = ln.Close()
+		return nil
+	}
+	p.Server = srv
 	p.running = true
 	p.mu.Unlock()
 
 	go func() {
-		log.Printf("[Proxy] Server started on %s", p.listenAddr)
-		if err := p.Server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Printf("[Proxy] Server started on %s", listenAddr)
+		tl := &trackingListener{
+			Listener: ln,
+			proxy:    p,
+		}
+		if err := srv.Serve(tl); err != nil && err != http.ErrServerClosed {
 			log.Printf("[Proxy] Server error: %v", err)
 		}
+		p.mu.Lock()
+		if p.Server == srv {
+			p.running = false
+		}
+		p.mu.Unlock()
 	}()
 
 	return nil
@@ -310,6 +665,9 @@ func (p *ProxyServer) handleRequest(w http.ResponseWriter, req *http.Request) {
 	matchHost := normalizeHost(host)
 	mode := p.GetMode()
 	rule := p.rules.matchRule(matchHost, mode)
+	if rule.SiteID != "" {
+		p.rules.incrementRuleHit(rule.SiteID)
+	}
 
 	log.Printf("[Proxy] Request: %s -> %s (match: %s, runtime-mode: %s, rule-mode: %s)", req.Method, host, matchHost, mode, rule.Mode)
 
@@ -322,6 +680,10 @@ func (p *ProxyServer) handleRequest(w http.ResponseWriter, req *http.Request) {
 }
 
 func (p *ProxyServer) handleConnect(w http.ResponseWriter, req *http.Request, rule Rule) {
+	p.stats.mu.Lock()
+	p.stats.Connects++
+	p.stats.mu.Unlock()
+
 	targetAuthority := req.URL.Host
 	if targetAuthority == "" {
 		targetAuthority = req.Host
@@ -329,13 +691,36 @@ func (p *ProxyServer) handleConnect(w http.ResponseWriter, req *http.Request, ru
 	targetHost := normalizeHost(targetAuthority)
 	targetAddr := ensureAddrWithPort(targetAuthority, "443")
 	effectiveMode := rule.Mode
-	resolvedUpstream := resolveUpstreamHost(targetHost, rule.Upstream)
+	resolvedUpstream := resolveRuleUpstream(targetHost, rule)
 
-	// Planning docs define transparent tunneling as baseline mode.
-	// If CA is not trusted by the OS/browser, MITM will fail during TLS handshake.
-	if effectiveMode == "mitm" && p.certGenerator != nil && !p.certGenerator.IsCAInstalled() {
-		log.Printf("[Connect] CA not installed, downgrade MITM -> transparent for host %s", targetHost)
+	switch strings.ToLower(strings.TrimSpace(rule.ConnectPolicy)) {
+	case "tunnel_origin":
 		effectiveMode = "transparent"
+		resolvedUpstream = ""
+	case "tunnel_upstream":
+		effectiveMode = "transparent"
+	case "mitm":
+		effectiveMode = "mitm"
+	case "direct":
+		effectiveMode = "direct"
+		resolvedUpstream = ""
+	}
+
+	// Stage-2 match: if stage-1 produced a dynamic upstream host (eg. *.gvt1.com),
+	// allow that upstream host to hit another rule and override policies.
+	if (effectiveMode == "mitm" || effectiveMode == "transparent") && strings.TrimSpace(resolvedUpstream) != "" {
+		upHost := firstUpstreamHost(targetHost, resolvedUpstream)
+		if upHost != "" {
+			upRule := p.rules.matchRule(upHost, effectiveMode)
+			if upRule.SiteID != "" {
+				baseSite := rule.SiteID
+				rule = mergeRule(rule, upRule)
+				if strings.TrimSpace(rule.Upstream) != "" {
+					resolvedUpstream = resolveRuleUpstream(upHost, rule)
+				}
+				log.Printf("[Connect] Stage-2 upstream rule applied: host=%s site=%s over base=%s", upHost, upRule.SiteID, baseSite)
+			}
+		}
 	}
 
 	log.Printf("[Connect] target=%s host=%s mode=%s->%s upstream=%s sni_fake=%s", targetAddr, targetHost, rule.Mode, effectiveMode, resolvedUpstream, rule.SniFake)
@@ -349,18 +734,33 @@ func (p *ProxyServer) handleConnect(w http.ResponseWriter, req *http.Request, ru
 	var conn net.Conn
 	var err error
 	dialAddr := targetAddr
+	dialCandidates := []string{dialAddr}
 
 	// For MITM/transparent rules, upstream should be respected if configured.
-	if (effectiveMode == "mitm" || effectiveMode == "transparent") && rule.Upstream != "" {
-		dialAddr = ensureAddrWithPort(resolvedUpstream, "443")
-		log.Printf("[Connect] Using upstream %s for host %s (mode: %s)", dialAddr, targetHost, effectiveMode)
+	if (effectiveMode == "mitm" || effectiveMode == "transparent") && strings.TrimSpace(resolvedUpstream) != "" {
+		dialCandidates = splitUpstreamCandidates(targetHost, resolvedUpstream, "443")
+		if len(dialCandidates) == 0 {
+			dialCandidates = []string{targetAddr}
+		}
+		dialAddr = dialCandidates[0]
+		log.Printf("[Connect] Using upstream candidates %v for host %s (mode: %s)", dialCandidates, targetHost, effectiveMode)
 	}
 
-	conn, err = net.Dial("tcp", dialAddr)
-
-	if err != nil {
+	dialer := &net.Dialer{
+		Timeout:   10 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}
+	for _, candidate := range dialCandidates {
+		conn, err = dialer.Dial("tcp", candidate)
+		if err == nil {
+			dialAddr = candidate
+			break
+		}
+		log.Printf("[Connect] Connect failed to %s: %v", candidate, err)
+	}
+	if err != nil || conn == nil {
 		http.Error(w, "Failed to connect to upstream", http.StatusBadGateway)
-		log.Printf("[Connect] Connect failed to %s: %v", dialAddr, err)
+		log.Printf("[Connect] All upstream connect attempts failed: %v", dialCandidates)
 		return
 	}
 
@@ -390,10 +790,12 @@ func (p *ProxyServer) handleConnect(w http.ResponseWriter, req *http.Request, ru
 		return
 	}
 	clientConn = wrapHijackedConn(clientConn, rw)
+	_ = clientConn.SetDeadline(time.Time{})
+	_ = conn.SetDeadline(time.Time{})
 
 	// 注意：不要在 hijack 后使用 defer，因为我们需要保持连接打开
 	if effectiveMode == "mitm" {
-		p.handleMITM(clientConn, conn, targetHost, rule)
+		p.handleMITM(clientConn, conn, targetHost, rule, dialCandidates, dialAddr)
 	} else {
 		p.handleTransparent(clientConn, conn, targetHost, rule)
 	}
@@ -408,7 +810,11 @@ func (p *ProxyServer) directConnect(w http.ResponseWriter, req *http.Request) {
 
 	log.Printf("[Direct] Connecting to %s", targetAddr)
 
-	conn, err := net.Dial("tcp", targetAddr)
+	dialer := &net.Dialer{
+		Timeout:   10 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}
+	conn, err := dialer.Dial("tcp", targetAddr)
 	if err != nil {
 		http.Error(w, "Failed to connect", http.StatusBadGateway)
 		return
@@ -437,6 +843,8 @@ func (p *ProxyServer) directConnect(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	clientConn = wrapHijackedConn(clientConn, rw)
+	_ = clientConn.SetDeadline(time.Time{})
+	_ = conn.SetDeadline(time.Time{})
 
 	// 双向复制数据
 	var wg sync.WaitGroup
@@ -516,7 +924,10 @@ func (p *ProxyServer) handleHTTP(w http.ResponseWriter, req *http.Request, rule 
 		if strings.EqualFold(newReq.URL.Scheme, "https") {
 			defaultPort = "443"
 		}
-		newReq.URL.Host = ensureAddrWithPort(rule.Upstream, defaultPort)
+		candidates := splitUpstreamCandidates(normalizeHost(newReq.Host), rule.Upstream, defaultPort)
+		if len(candidates) > 0 {
+			newReq.URL.Host = candidates[0]
+		}
 	}
 
 	transport := &http.Transport{
@@ -547,7 +958,7 @@ func (p *ProxyServer) handleHTTP(w http.ResponseWriter, req *http.Request, rule 
 	p.stats.mu.Unlock()
 }
 
-func (p *ProxyServer) handleMITM(clientConn, upstreamConn net.Conn, host string, rule Rule) {
+func (p *ProxyServer) handleMITM(clientConn, upstreamConn net.Conn, host string, rule Rule, dialCandidates []string, initialDialAddr string) {
 	log.Printf("[MITM] Handling %s with SNI: %s", host, rule.SniFake)
 
 	if p.certGenerator == nil {
@@ -573,9 +984,18 @@ func (p *ProxyServer) handleMITM(clientConn, upstreamConn net.Conn, host string,
 		return
 	}
 
+	alpnPolicy := strings.ToLower(strings.TrimSpace(rule.AlpnPolicy))
+	clientNextProtos := []string{"h2", "http/1.1"}
+	if alpnPolicy == "h1_only" {
+		clientNextProtos = []string{"http/1.1"}
+	}
+	if alpnPolicy == "h2_h1" {
+		clientNextProtos = []string{"h2", "http/1.1"}
+	}
+
 	tlsConfig := &tls.Config{
 		Certificates: []tls.Certificate{*cert},
-		NextProtos:   []string{"h2", "http/1.1"},
+		NextProtos:   clientNextProtos,
 	}
 
 	clientTls := tls.Server(clientConn, tlsConfig)
@@ -590,37 +1010,112 @@ func (p *ProxyServer) handleMITM(clientConn, upstreamConn net.Conn, host string,
 	sniHost := chooseUpstreamSNI(host, rule)
 	log.Printf("[MITM] Upstream handshake SNI selected: %s, client ALPN: %s", sniHost, clientALPN)
 
+	orderedCandidates := make([]string, 0, len(dialCandidates))
+	if strings.TrimSpace(initialDialAddr) != "" {
+		orderedCandidates = append(orderedCandidates, initialDialAddr)
+	}
+	for _, c := range dialCandidates {
+		if strings.TrimSpace(c) == "" || c == initialDialAddr {
+			continue
+		}
+		orderedCandidates = append(orderedCandidates, c)
+	}
+	if len(orderedCandidates) == 0 {
+		orderedCandidates = append(orderedCandidates, net.JoinHostPort(host, "443"))
+	}
+
 	var upstreamRW io.ReadWriteCloser
-	// MITM mode should mimic browser TLS fingerprint when possible.
-	if strings.TrimSpace(rule.SniFake) != "" && strings.TrimSpace(clientALPN) != "" {
-		uconn := p.GetUConn(upstreamConn, sniHost, true, clientALPN)
-		if err := uconn.Handshake(); err == nil {
-			log.Printf("[MITM] Upstream (uTLS) negotiated ALPN: %s", uconn.ConnectionState().NegotiatedProtocol)
-			upstreamRW = uconn
+	var lastErr error
+	dialer := &net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}
+	utlsPolicy := strings.ToLower(strings.TrimSpace(rule.UTLSPolicy))
+	sniPolicy := strings.ToLower(strings.TrimSpace(rule.SniPolicy))
+	effectiveFakeSNI := strings.TrimSpace(rule.SniFake) != "" || (sniPolicy == "fake" && strings.TrimSpace(sniHost) != "" && !strings.EqualFold(strings.TrimSpace(sniHost), strings.TrimSpace(host)))
+
+	for idx, candidate := range orderedCandidates {
+		var rawConn net.Conn
+		var err error
+		if idx == 0 && upstreamConn != nil && candidate == initialDialAddr {
+			rawConn = upstreamConn
 		} else {
-			log.Printf("[MITM] Upstream uTLS handshake failed, fallback to std TLS: %v", err)
+			rawConn, err = dialer.Dial("tcp", candidate)
+			if err != nil {
+				lastErr = err
+				log.Printf("[MITM] Upstream dial failed %s: %v", candidate, err)
+				continue
+			}
+		}
+		_ = rawConn.SetDeadline(time.Time{})
+
+		useUTLS := false
+		switch utlsPolicy {
+		case "off":
+			useUTLS = false
+		case "on":
+			useUTLS = true
+		default: // auto / empty
+			useUTLS = effectiveFakeSNI
+		}
+
+		if useUTLS {
+			upstreamALPN := strings.TrimSpace(clientALPN)
+			if upstreamALPN == "" {
+				upstreamALPN = "http/1.1"
+			}
+			uconn := p.GetUConn(rawConn, sniHost, true, upstreamALPN)
+			if err := uconn.Handshake(); err == nil {
+				negotiated := uconn.ConnectionState().NegotiatedProtocol
+				if upstreamALPN != "" && negotiated != upstreamALPN {
+					lastErr = fmt.Errorf("utls alpn mismatch want=%s got=%s", upstreamALPN, negotiated)
+					log.Printf("[MITM] Upstream uTLS ALPN mismatch on %s: want=%s got=%s", candidate, upstreamALPN, negotiated)
+					_ = uconn.Close()
+				} else {
+					log.Printf("[MITM] Upstream (uTLS) negotiated ALPN: %s via %s", negotiated, candidate)
+					upstreamRW = uconn
+					break
+				}
+			} else {
+				lastErr = err
+				log.Printf("[MITM] Upstream uTLS handshake failed on %s: %v", candidate, err)
+			}
+		}
+
+		if upstreamRW == nil {
+			upTLSConfig := &tls.Config{
+				ServerName:         sniHost,
+				InsecureSkipVerify: true,
+			}
+			switch alpnPolicy {
+			case "h1_only":
+				upTLSConfig.NextProtos = []string{"http/1.1"}
+			case "h2_h1":
+				upTLSConfig.NextProtos = []string{"h2", "http/1.1"}
+			default:
+				if strings.TrimSpace(clientALPN) != "" {
+					upTLSConfig.NextProtos = []string{clientALPN}
+				} else {
+					upTLSConfig.NextProtos = []string{"http/1.1"}
+				}
+			}
+			upstreamTLS := tls.Client(rawConn, upTLSConfig)
+			if err := upstreamTLS.Handshake(); err != nil {
+				lastErr = err
+				log.Printf("[MITM] Upstream TLS handshake failed on %s: %v", candidate, err)
+				_ = rawConn.Close()
+				continue
+			}
+			log.Printf("[MITM] Upstream (std TLS) negotiated ALPN: %s via %s", upstreamTLS.ConnectionState().NegotiatedProtocol, candidate)
+			upstreamRW = upstreamTLS
+			break
 		}
 	}
 
 	if upstreamRW == nil {
-		upTLSConfig := &tls.Config{
-			ServerName:         sniHost,
-			InsecureSkipVerify: true,
-		}
-		if strings.TrimSpace(clientALPN) != "" {
-			upTLSConfig.NextProtos = []string{clientALPN}
-		} else {
-			upTLSConfig.NextProtos = []string{"http/1.1"}
-		}
-		upstreamTLS := tls.Client(upstreamConn, upTLSConfig)
-		if err := upstreamTLS.Handshake(); err != nil {
-			log.Printf("[MITM] Upstream TLS handshake failed: %v", err)
-			clientTls.Close()
+		log.Printf("[MITM] No usable upstream candidate, last err: %v", lastErr)
+		clientTls.Close()
+		if upstreamConn != nil {
 			upstreamConn.Close()
-			return
 		}
-		log.Printf("[MITM] Upstream (std TLS) negotiated ALPN: %s", upstreamTLS.ConnectionState().NegotiatedProtocol)
-		upstreamRW = upstreamTLS
+		return
 	}
 
 	var wg sync.WaitGroup
@@ -681,11 +1176,11 @@ func (p *ProxyServer) generateCert(host string, caCert *x509.Certificate, caKey 
 		Subject: pkix.Name{
 			CommonName: host,
 		},
-		NotBefore:    time.Now(),
-		NotAfter:     time.Now().Add(24 * time.Hour),
-		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
-		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		DNSNames:     []string{host},
+		NotBefore:   time.Now(),
+		NotAfter:    time.Now().Add(24 * time.Hour),
+		KeyUsage:    x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		DNSNames:    []string{host},
 	}
 
 	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -731,6 +1226,8 @@ func (r *RuleManager) matchRule(host, mode string) Rule {
 
 	host = normalizeHost(host)
 	mode = strings.ToLower(strings.TrimSpace(mode))
+	best := Rule{}
+	bestScore := -1
 	for _, rule := range r.rules {
 		if !rule.Enabled {
 			continue
@@ -741,9 +1238,14 @@ func (r *RuleManager) matchRule(host, mode string) Rule {
 				continue
 			}
 		}
-		if hostMatchesDomain(host, normalizeHost(rule.Domain)) {
-			return rule
+		score := domainMatchScore(host, rule.Domain)
+		if score >= 0 && score > bestScore {
+			best = rule
+			bestScore = score
 		}
+	}
+	if bestScore >= 0 {
+		return best
 	}
 
 	return Rule{Mode: "direct", Enabled: true}
@@ -755,10 +1257,37 @@ func (p *ProxyServer) GetStats() (int64, int64, int64) {
 	return p.stats.BytesIn, p.stats.BytesOut, p.stats.Requests
 }
 
+func (p *ProxyServer) trackAccepted(remote string) {
+	p.stats.mu.Lock()
+	p.stats.Accepted++
+	p.stats.mu.Unlock()
+
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if len(p.recentIngress) >= 10 {
+		p.recentIngress = p.recentIngress[1:]
+	}
+	p.recentIngress = append(p.recentIngress, remote)
+}
+
+func (p *ProxyServer) GetDiagnostics() (int64, int64, int64, []string) {
+	p.stats.mu.Lock()
+	accepted := p.stats.Accepted
+	requests := p.stats.Requests
+	connects := p.stats.Connects
+	p.stats.mu.Unlock()
+
+	p.mu.RLock()
+	recent := append([]string(nil), p.recentIngress...)
+	p.mu.RUnlock()
+	return accepted, requests, connects, recent
+}
+
 func NewRuleManager(configPath string) *RuleManager {
 	return &RuleManager{
 		configPath: configPath,
 		rules:      []Rule{},
+		hitCount:   map[string]int64{},
 	}
 }
 
@@ -778,8 +1307,23 @@ func (rm *RuleManager) LoadConfig() error {
 
 	rm.siteGroups = config.SiteGroups
 	rm.upstreams = config.Upstreams
+	migrated := false
+	for i := range rm.siteGroups {
+		rm.siteGroups[i].Website = strings.TrimSpace(rm.siteGroups[i].Website)
+		if rm.siteGroups[i].Website == "" {
+			rm.siteGroups[i].Website = inferWebsiteFromSiteGroup(rm.siteGroups[i])
+			migrated = true
+		}
+	}
 
 	rm.buildRules()
+	if migrated {
+		if err := rm.saveConfig(); err != nil {
+			log.Printf("[Config] migrate website field failed: %v", err)
+		} else {
+			log.Printf("[Config] migrated website field for existing site groups")
+		}
+	}
 	return nil
 }
 
@@ -834,13 +1378,19 @@ func loadEmbeddedRules() ([]SiteGroup, []Upstream, error) {
 
 		for _, rule := range configFile.Rules {
 			sg := SiteGroup{
-				ID:       generateID(),
-				Name:     rule.Name,
-				Domains:  rule.Domains,
-				Mode:     configFile.Type,
-				Upstream: rule.Upstream,
-				SniFake:  rule.SniFake,
-				Enabled:  rule.Enabled,
+				ID:            generateID(),
+				Name:          rule.Name,
+				Website:       strings.TrimSpace(rule.Website),
+				Domains:       rule.Domains,
+				Mode:          configFile.Type,
+				Upstream:      rule.Upstream,
+				Upstreams:     append([]string(nil), rule.Upstreams...),
+				SniFake:       rule.SniFake,
+				ConnectPolicy: strings.ToLower(strings.TrimSpace(rule.ConnectPolicy)),
+				SniPolicy:     strings.ToLower(strings.TrimSpace(rule.SniPolicy)),
+				AlpnPolicy:    strings.ToLower(strings.TrimSpace(rule.AlpnPolicy)),
+				UTLSPolicy:    strings.ToLower(strings.TrimSpace(rule.UTLSPolicy)),
+				Enabled:       rule.Enabled,
 			}
 			siteGroups = append(siteGroups, sg)
 		}
@@ -850,14 +1400,8 @@ func loadEmbeddedRules() ([]SiteGroup, []Upstream, error) {
 		return nil, nil, fmt.Errorf("no embedded rules found")
 	}
 
-	upstreams = []Upstream{
-		{
-			ID:      "google-cn",
-			Name:    "Google境内节点",
-			Address: "8.137.102.117:443",
-			Enabled: true,
-		},
-	}
+	// No hardcoded upstream fallback. All upstream selection must be rule-driven.
+	upstreams = []Upstream{}
 
 	log.Printf("[Config] Loaded %d rules from embedded files", len(siteGroups))
 	return siteGroups, upstreams, nil
@@ -871,15 +1415,40 @@ func (rm *RuleManager) buildRules() {
 		}
 		for _, domain := range sg.Domains {
 			rule := Rule{
-				Domain:   domain,
-				Mode:     sg.Mode,
-				Upstream: sg.Upstream,
-				SniFake:  sg.SniFake,
-				Enabled:  true,
+				Domain:        domain,
+				Mode:          sg.Mode,
+				Upstream:      sg.Upstream,
+				Upstreams:     append([]string(nil), sg.Upstreams...),
+				SniFake:       sg.SniFake,
+				ConnectPolicy: strings.TrimSpace(sg.ConnectPolicy),
+				SniPolicy:     strings.TrimSpace(sg.SniPolicy),
+				AlpnPolicy:    strings.TrimSpace(sg.AlpnPolicy),
+				UTLSPolicy:    strings.TrimSpace(sg.UTLSPolicy),
+				Enabled:       true,
+				SiteID:        sg.ID,
 			}
 			rm.rules = append(rm.rules, rule)
 		}
 	}
+}
+
+func (rm *RuleManager) incrementRuleHit(siteID string) {
+	if siteID == "" {
+		return
+	}
+	rm.mu.Lock()
+	rm.hitCount[siteID]++
+	rm.mu.Unlock()
+}
+
+func (rm *RuleManager) GetRuleHitCounts() map[string]int64 {
+	rm.mu.RLock()
+	defer rm.mu.RUnlock()
+	out := make(map[string]int64, len(rm.hitCount))
+	for k, v := range rm.hitCount {
+		out[k] = v
+	}
+	return out
 }
 
 func (rm *RuleManager) GetSiteGroups() []SiteGroup {
@@ -893,6 +1462,7 @@ func (rm *RuleManager) AddSiteGroup(sg SiteGroup) error {
 	defer rm.mu.Unlock()
 
 	sg.ID = generateID()
+	sg.Website = strings.TrimSpace(sg.Website)
 	rm.siteGroups = append(rm.siteGroups, sg)
 	rm.buildRules()
 	return rm.saveConfig()
@@ -902,6 +1472,7 @@ func (rm *RuleManager) UpdateSiteGroup(sg SiteGroup) error {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 
+	sg.Website = strings.TrimSpace(sg.Website)
 	for i, s := range rm.siteGroups {
 		if s.ID == sg.ID {
 			rm.siteGroups[i] = sg

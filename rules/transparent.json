@@ -6,10 +6,15 @@
       "name": "gstatic.com",
       "enabled": true,
       "domains": [
-        "gstatic.com"
+        "google.com",
+        "google.com.*",
+        "gstatic.com",
+        "googleusercontent.com",
+        "*.googleusercontent.com"
       ],
-      "upstream": "www.gstatic.com",
-      "sni_fake": "g.cn"
+      "upstream": "8.137.102.117:443",
+      "sni_fake": "g.cn",
+      "website": "google"
     },
     {
       "name": "gemini.google.com",
@@ -17,32 +22,57 @@
       "domains": [
         "gemini.google.com"
       ],
-      "upstream": "gemini.google.com",
-      "sni_fake": "g.cn"
+      "upstream": "47.102.115.14:443",
+      "sni_fake": "g.cn",
+      "website": "google"
     },
     {
       "name": "youtube.com",
       "enabled": true,
       "domains": [
         "gdata.youtube.com",
+        "ggpht.com",
         "upload.youtube.com",
         "uploads.stage.gdata.youtube.com",
         "usercontent.youtube.com",
+        "youtu.be",
         "youtube-nocookie.com",
         "youtube.com",
         "ytimg.com"
       ],
-      "upstream": "youtube.com",
-      "sni_fake": "g.cn"
+      "upstream": "8.137.102.117:443",
+      "sni_fake": "g.cn",
+      "website": "google"
     },
     {
       "name": "googlevideo.com",
       "enabled": true,
       "domains": [
-        "googlevideo.com"
+        "googlevideo.com",
+        "*.googlevideo.com"
       ],
-      "upstream": "$1.gvt1.com",
-      "sni_fake": "g.cn"
+      "upstream": "$1.gvt1.com:443",
+      "sni_fake": "g.cn",
+      "website": "google",
+      "connect_policy": "mitm",
+      "sni_policy": "fake",
+      "alpn_policy": "h1_only",
+      "utls_policy": "off"
+    },
+    {
+      "name": "gvt1.com",
+      "enabled": true,
+      "domains": [
+        "gvt1.com",
+        "*.gvt1.com"
+      ],
+      "upstream": "",
+      "sni_fake": "g.cn",
+      "website": "google",
+      "connect_policy": "mitm",
+      "sni_policy": "fake",
+      "alpn_policy": "h1_only",
+      "utls_policy": "off"
     }
   ]
 }

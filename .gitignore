@@ -19,6 +19,17 @@ frontend/wailsjs/
 cert/
 *.log
 config.json
+diag_report_*.txt
+diag_report_*.json
+
+# Local temp / backups
+*.bak
+*.bak.*
+rules/*.bak*
+rules/*.generated.json
+rules/*.manual.json
+rules/*.rejected.json
+rules/*.v2.json
 
 # OS / editor
 .DS_Store

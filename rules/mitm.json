@@ -10,7 +10,8 @@
         "pixiv.net"
       ],
       "upstream": "pixiv.net",
-      "sni_fake": "pixivision.net"
+      "sni_fake": "pixivision.net",
+      "website": "pixiv"
     },
     {
       "name": "lc-event.pixiv.net",
@@ -19,7 +20,8 @@
         "lc-event.pixiv.net"
       ],
       "upstream": "lc.event.pixiv.net",
-      "sni_fake": "pixivision.net"
+      "sni_fake": "pixivision.net",
+      "website": "pixiv"
     },
     {
       "name": "pximg.net",
@@ -28,7 +30,8 @@
         "pximg.net"
       ],
       "upstream": "i.pximg.net",
-      "sni_fake": "pixivision.net"
+      "sni_fake": "pixivision.net",
+      "website": "pixiv"
     },
     {
       "name": "pixiv.pximg.net",
@@ -37,7 +40,8 @@
         "pixiv.pximg.net"
       ],
       "upstream": "pixiv.pximg.net",
-      "sni_fake": "pixiv.pximg.net"
+      "sni_fake": "pixiv.pximg.net",
+      "website": "pixiv"
     },
     {
       "name": "a.pixiv.org",
@@ -46,7 +50,8 @@
         "a.pixiv.org"
       ],
       "upstream": "a.pixiv.org",
-      "sni_fake": "a.pixiv.org"
+      "sni_fake": "a.pixiv.org",
+      "website": "pixiv"
     },
     {
       "name": "d.pixiv.org",
@@ -55,7 +60,8 @@
         "d.pixiv.org"
       ],
       "upstream": "d.pixiv.org",
-      "sni_fake": "d.pixiv.org"
+      "sni_fake": "d.pixiv.org",
+      "website": "pixiv"
     },
     {
       "name": "api.fanbox.cc",
@@ -64,7 +70,8 @@
         "api.fanbox.cc"
       ],
       "upstream": "api.fanbox.cc",
-      "sni_fake": "api.fanbox.cc"
+      "sni_fake": "api.fanbox.cc",
+      "website": "pixiv"
     },
     {
       "name": "sukebei.nyaa.si",
@@ -73,7 +80,8 @@
         "sukebei.nyaa.si"
       ],
       "upstream": "sukebei.nyaa.si",
-      "sni_fake": "sukebei.nyaa.si"
+      "sni_fake": "sukebei.nyaa.si",
+      "website": "nyaa"
     },
     {
       "name": "nyaa.si",
@@ -82,7 +90,8 @@
         "nyaa.si"
       ],
       "upstream": "nyaa.si",
-      "sni_fake": "nyaa.si"
+      "sni_fake": "nyaa.si",
+      "website": "nyaa"
     },
     {
       "name": "pornhub.com",
@@ -90,8 +99,10 @@
       "domains": [
         "pornhub.com"
       ],
-      "upstream": "pornhub.com",
-      "sni_fake": "pornhub.com"
+      "upstream": "66.254.114.40:443",
+      "sni_fake": "",
+      "website": "pornhub",
+      "sni_policy": "original"
     },
     {
       "name": "gstatic.com",
@@ -102,7 +113,13 @@
         "gemini.google.com",
         "ggpht.com",
         "gmail.com",
-        "googlevideo.com",
+        "google.com",
+        "google.com.*",
+        "googleapis.com",
+        "youtubei.googleapis.com",
+        "www.googleapis.com",
+        "googleusercontent.com",
+        "*.googleusercontent.com",
         "gstatic.com",
         "upload.youtube.com",
         "uploads.stage.gdata.youtube.com",
@@ -112,8 +129,9 @@
         "youtube.com",
         "ytimg.com"
       ],
-      "upstream": "google.com",
-      "sni_fake": "g.cn"
+      "upstream": "8.137.102.117:443",
+      "sni_fake": "g.cn",
+      "website": "google"
     },
     {
       "name": "cdn.jsdelivr.net",
@@ -123,7 +141,8 @@
         "jsdelivr.net"
       ],
       "upstream": "cdn.jsdelivr.net",
-      "sni_fake": "cdn.jsdelivr.net"
+      "sni_fake": "cdn.jsdelivr.net",
+      "website": "jsdelivr"
     },
     {
       "name": "wikipedia.org",
@@ -156,7 +175,8 @@
         "wiktionary.org"
       ],
       "upstream": "wikipedia.org",
-      "sni_fake": "wikipedia.org"
+      "sni_fake": "wikipedia.org",
+      "website": "wikipedia"
     },
     {
       "name": "upload.wikimedia.org",
@@ -165,7 +185,8 @@
         "upload.wikimedia.org"
       ],
       "upstream": "upload.wikipedia.org",
-      "sni_fake": "upload.wikimedia.org"
+      "sni_fake": "upload.wikimedia.org",
+      "website": "wikipedia"
     },
     {
       "name": "archiveofourown.org",
@@ -174,7 +195,8 @@
         "archiveofourown.org"
       ],
       "upstream": "archiveofourown.org",
-      "sni_fake": "archiveofourown.org"
+      "sni_fake": "archiveofourown.org",
+      "website": "ao3"
     },
     {
       "name": "steamcommunity.com",
@@ -183,7 +205,8 @@
         "steamcommunity.com"
       ],
       "upstream": "steamcommunity.com",
-      "sni_fake": "steamcommunity.com"
+      "sni_fake": "steamcommunity.com",
+      "website": "steam"
     },
     {
       "name": "e-hentai.org",
@@ -192,7 +215,8 @@
         "e-hentai.org"
       ],
       "upstream": "e.hentai.org",
-      "sni_fake": "e-hentai.org"
+      "sni_fake": "e-hentai.org",
+      "website": "ehentai"
     },
     {
       "name": "exhentai.org",
@@ -201,7 +225,8 @@
         "exhentai.org"
       ],
       "upstream": "exhentai.org",
-      "sni_fake": "exhentai.org"
+      "sni_fake": "exhentai.org",
+      "website": "ehentai"
     },
     {
       "name": "forums.e-hentai.org",
@@ -210,7 +235,8 @@
         "forums.e-hentai.org"
       ],
       "upstream": "forums.e.hentai.org",
-      "sni_fake": "forums.e-hentai.org"
+      "sni_fake": "forums.e-hentai.org",
+      "website": "ehentai"
     },
     {
       "name": "api.e-hentai.org",
@@ -219,7 +245,8 @@
         "api.e-hentai.org"
       ],
       "upstream": "api.e.hentai.org",
-      "sni_fake": "api.e-hentai.org"
+      "sni_fake": "api.e-hentai.org",
+      "website": "ehentai"
     },
     {
       "name": "upld.e-hentai.org",
@@ -229,7 +256,8 @@
         "upload.e-hentai.org"
       ],
       "upstream": "upload.e.hentai.org",
-      "sni_fake": "upld.e-hentai.org"
+      "sni_fake": "upld.e-hentai.org",
+      "website": "ehentai"
     },
     {
       "name": "ehgt.org",
@@ -238,7 +266,8 @@
         "ehgt.org"
       ],
       "upstream": "ehgt.org",
-      "sni_fake": "ehgt.org"
+      "sni_fake": "ehgt.org",
+      "website": "ehentai"
     },
     {
       "name": "hentaiverse.org",
@@ -247,7 +276,8 @@
         "hentaiverse.org"
       ],
       "upstream": "hentaiverse.org",
-      "sni_fake": "hentaiverse.org"
+      "sni_fake": "hentaiverse.org",
+      "website": "ehentai"
     },
     {
       "name": "ehwiki.org",
@@ -256,7 +286,8 @@
         "ehwiki.org"
       ],
       "upstream": "ehwiki.org",
-      "sni_fake": "ehwiki.org"
+      "sni_fake": "ehwiki.org",
+      "website": "ehentai"
     },
     {
       "name": "ehtracker.org",
@@ -265,7 +296,8 @@
         "ehtracker.org"
       ],
       "upstream": "ehtracker.org",
-      "sni_fake": "ehtracker.org"
+      "sni_fake": "ehtracker.org",
+      "website": "ehentai"
     },
     {
       "name": "okx.com",
@@ -274,7 +306,8 @@
         "okx.com"
       ],
       "upstream": "okx.com",
-      "sni_fake": "okx.com"
+      "sni_fake": "okx.com",
+      "website": "okx"
     },
     {
       "name": "f-droid.org",
@@ -283,7 +316,8 @@
         "f-droid.org"
       ],
       "upstream": "f.droid.org",
-      "sni_fake": "f-droid.org"
+      "sni_fake": "f-droid.org",
+      "website": "fdroid"
     },
     {
       "name": "forum.f-droid.org",
@@ -292,7 +326,8 @@
         "forum.f-droid.org"
       ],
       "upstream": "forum.f.droid.org",
-      "sni_fake": "forum.f-droid.org"
+      "sni_fake": "forum.f-droid.org",
+      "website": "fdroid"
     },
     {
       "name": "apkmirror.com",
@@ -301,7 +336,8 @@
         "apkmirror.com"
       ],
       "upstream": "apkmirror.com",
-      "sni_fake": "apkmirror.com"
+      "sni_fake": "apkmirror.com",
+      "website": "apkmirror"
     },
     {
       "name": "amazon.co.jp",
@@ -310,7 +346,8 @@
         "amazon.co.jp"
       ],
       "upstream": "amazon.co.jp",
-      "sni_fake": "amazon.com"
+      "sni_fake": "amazon.com",
+      "website": "amazon"
     },
     {
       "name": "nytimes.com",
@@ -321,7 +358,8 @@
         "nytimes.com"
       ],
       "upstream": "www.nytimes.com",
-      "sni_fake": "nytimes.com"
+      "sni_fake": "nytimes.com",
+      "website": "nytimes"
     },
     {
       "name": "bbc.com",
@@ -331,7 +369,8 @@
         "bbc.com"
       ],
       "upstream": "bbc.com",
-      "sni_fake": "bbc.com"
+      "sni_fake": "bbc.com",
+      "website": "bbc"
     },
     {
       "name": "bbci.co.uk",
@@ -346,7 +385,8 @@
         "static.bbci.co.uk"
       ],
       "upstream": "bbci.co.uk",
-      "sni_fake": "bbci.co.uk"
+      "sni_fake": "bbci.co.uk",
+      "website": "bbc"
     },
     {
       "name": "etsy.com",
@@ -355,7 +395,8 @@
         "etsy.com"
       ],
       "upstream": "etsy.com",
-      "sni_fake": "etsy.com"
+      "sni_fake": "etsy.com",
+      "website": "etsy"
     },
     {
       "name": "ok.ru",
@@ -365,7 +406,8 @@
         "ok.ru"
       ],
       "upstream": "ok.ru",
-      "sni_fake": "ok.ru"
+      "sni_fake": "ok.ru",
+      "website": "odnoklassniki"
     },
     {
       "name": "z-lib.help",
@@ -375,7 +417,8 @@
         "z-library.sk"
       ],
       "upstream": "1lib.sk",
-      "sni_fake": "z-lib.help"
+      "sni_fake": "z-lib.help",
+      "website": "zlibrary"
     },
     {
       "name": "proton.me",
@@ -384,7 +427,8 @@
         "proton.me"
       ],
       "upstream": "proton.me",
-      "sni_fake": "proton.me"
+      "sni_fake": "proton.me",
+      "website": "proton"
     },
     {
       "name": "account.proton.me",
@@ -393,7 +437,8 @@
         "account.proton.me"
       ],
       "upstream": "185.70.42.36:443",
-      "sni_fake": "account.proton.me"
+      "sni_fake": "account.proton.me",
+      "website": "proton"
     },
     {
       "name": "account-api.proton.me",
@@ -402,7 +447,8 @@
         "account-api.proton.me"
       ],
       "upstream": "185.70.42.20:443",
-      "sni_fake": "account-api.proton.me"
+      "sni_fake": "account-api.proton.me",
+      "website": "proton"
     },
     {
       "name": "mail.proton.me",
@@ -411,7 +457,8 @@
         "mail.proton.me"
       ],
       "upstream": "185.70.42.37:443",
-      "sni_fake": "mail.proton.me"
+      "sni_fake": "mail.proton.me",
+      "website": "proton"
     },
     {
       "name": "calendar.proton.me",
@@ -420,7 +467,8 @@
         "calendar.proton.me"
       ],
       "upstream": "185.70.42.39:443",
-      "sni_fake": "calendar.proton.me"
+      "sni_fake": "calendar.proton.me",
+      "website": "proton"
     },
     {
       "name": "drive.proton.me",
@@ -429,7 +477,8 @@
         "drive.proton.me"
       ],
       "upstream": "185.70.42.40:443",
-      "sni_fake": "drive.proton.me"
+      "sni_fake": "drive.proton.me",
+      "website": "proton"
     },
     {
       "name": "pass.proton.me",
@@ -438,7 +487,8 @@
         "pass.proton.me"
       ],
       "upstream": "185.70.42.63:443",
-      "sni_fake": "pass.proton.me"
+      "sni_fake": "pass.proton.me",
+      "website": "proton"
     },
     {
       "name": "gelbooru.com",
@@ -447,7 +497,8 @@
         "gelbooru.com"
       ],
       "upstream": "gelbooru.com",
-      "sni_fake": "gelbooru.com"
+      "sni_fake": "gelbooru.com",
+      "website": "gelbooru"
     },
     {
       "name": "github.com",
@@ -458,7 +509,8 @@
         "www.github.com"
       ],
       "upstream": "github.com",
-      "sni_fake": "github.com"
+      "sni_fake": "github.com",
+      "website": "github"
     },
     {
       "name": "codeload.github.com",
@@ -467,7 +519,8 @@
         "codeload.github.com"
       ],
       "upstream": "codeload.github.com",
-      "sni_fake": "codeload.github.com"
+      "sni_fake": "codeload.github.com",
+      "website": "github"
     },
     {
       "name": "api.github.com",
@@ -477,7 +530,8 @@
         "lfs.github.com"
       ],
       "upstream": "api.github.com",
-      "sni_fake": "api.github.com"
+      "sni_fake": "api.github.com",
+      "website": "github"
     },
     {
       "name": "objects-origin.githubusercontent.com",
@@ -486,7 +540,8 @@
         "objects-origin.githubusercontent.com"
       ],
       "upstream": "edu.github.com",
-      "sni_fake": "objects-origin.githubusercontent.com"
+      "sni_fake": "objects-origin.githubusercontent.com",
+      "website": "github"
     },
     {
       "name": "redirect.github.com",
@@ -498,7 +553,8 @@
         "services.github.com"
       ],
       "upstream": "redirect.github.com",
-      "sni_fake": "redirect.github.com"
+      "sni_fake": "redirect.github.com",
+      "website": "github"
     },
     {
       "name": "education.github.com",
@@ -511,7 +567,8 @@
         "enterprise.github.com"
       ],
       "upstream": "edu.github.com",
-      "sni_fake": "education.github.com"
+      "sni_fake": "education.github.com",
+      "website": "github"
     },
     {
       "name": "githubusercontent.com",
@@ -533,7 +590,8 @@
         "www.github.io"
       ],
       "upstream": "githubusercontent.com",
-      "sni_fake": "githubusercontent.com"
+      "sni_fake": "githubusercontent.com",
+      "website": "github"
     },
     {
       "name": "docs.github.com",
@@ -543,7 +601,8 @@
         "githubassets.com"
       ],
       "upstream": "githubassets.com",
-      "sni_fake": "docs.github.com"
+      "sni_fake": "docs.github.com",
+      "website": "github"
     },
     {
       "name": "external-content.duckduckgo.com$",
@@ -552,7 +611,8 @@
         "external-content.duckduckgo.com$"
       ],
       "upstream": "external.content.duckduckgo.com",
-      "sni_fake": "external-content.duckduckgo.com$"
+      "sni_fake": "external-content.duckduckgo.com$",
+      "website": "duckduckgo"
     },
     {
       "name": "duckduckgo.com",
@@ -561,7 +621,8 @@
         "duckduckgo.com"
       ],
       "upstream": "duckduckgo.com",
-      "sni_fake": "duckduckgo.com"
+      "sni_fake": "duckduckgo.com",
+      "website": "duckduckgo"
     },
     {
       "name": "greasyfork.org",
@@ -570,7 +631,8 @@
         "greasyfork.org"
       ],
       "upstream": "greasyfork.org",
-      "sni_fake": "greasyfork.org"
+      "sni_fake": "greasyfork.org",
+      "website": "greasyfork"
     },
     {
       "name": "facebook.com",
@@ -581,7 +643,8 @@
         "fbcdn.net"
       ],
       "upstream": "157.240.22.169",
-      "sni_fake": "facebook.com"
+      "sni_fake": "facebook.com",
+      "website": "meta"
     },
     {
       "name": "instagram.com",
@@ -594,7 +657,8 @@
         "static.cdninstagram.com"
       ],
       "upstream": "157.240.236.174",
-      "sni_fake": "instagram.com"
+      "sni_fake": "instagram.com",
+      "website": "meta"
     },
     {
       "name": "twitter.com",
@@ -605,7 +669,8 @@
         "x.com"
       ],
       "upstream": "69.195.183.139",
-      "sni_fake": "twitter.com"
+      "sni_fake": "twitter.com",
+      "website": "x"
     },
     {
       "name": "twimg.com",
@@ -614,7 +679,8 @@
         "twimg.com"
       ],
       "upstream": "146.75.72.157",
-      "sni_fake": "twimg.com"
+      "sni_fake": "twimg.com",
+      "website": "x"
     },
     {
       "name": "whatsapp.com",
@@ -624,7 +690,8 @@
         "whatsapp.net"
       ],
       "upstream": "157.240.225.60",
-      "sni_fake": "whatsapp.com"
+      "sni_fake": "whatsapp.com",
+      "website": "meta"
     },
     {
       "name": "images.prismic.io",
@@ -633,7 +700,8 @@
         "images.prismic.io"
       ],
       "upstream": "images.prismic.io",
-      "sni_fake": "images.prismic.io"
+      "sni_fake": "images.prismic.io",
+      "website": "prismic"
     },
     {
       "name": "pinterest.com",
@@ -643,7 +711,8 @@
         "pinterest.com"
       ],
       "upstream": "151.101.0.84",
-      "sni_fake": "pinterest.com"
+      "sni_fake": "pinterest.com",
+      "website": "pinterest"
     },
     {
       "name": "rutube.ru",
@@ -652,7 +721,8 @@
         "rutube.ru"
       ],
       "upstream": "109.238.90.239",
-      "sni_fake": "rutube.ru"
+      "sni_fake": "rutube.ru",
+      "website": "rutube"
     },
     {
       "name": "huggingface.co",
@@ -665,7 +735,8 @@
         "status.huggingface.co"
       ],
       "upstream": "3.167.200.113",
-      "sni_fake": "huggingface.co"
+      "sni_fake": "huggingface.co",
+      "website": "huggingface"
     },
     {
       "name": "rumble.com",
@@ -674,7 +745,8 @@
         "rumble.com"
       ],
       "upstream": "205.220.231.24",
-      "sni_fake": "rumble.com"
+      "sni_fake": "rumble.com",
+      "website": "rumble"
     },
     {
       "name": "reddit.com",
@@ -686,7 +758,8 @@
         "redditstatic.com"
       ],
       "upstream": "146.75.33.140",
-      "sni_fake": "reddit.com"
+      "sni_fake": "reddit.com",
+      "website": "reddit"
     },
     {
       "name": "assets.twitch.tv",
@@ -697,8 +770,9 @@
         "panels.twitch.tv",
         "passport.twitch.tv"
       ],
-      "upstream": "3.167.200.113",
-      "sni_fake": "assets.twitch.tv"
+      "upstream": "3.167.200.113:443",
+      "sni_fake": "",
+      "website": "twitch"
     },
     {
       "name": "twitch.tv",
@@ -706,10 +780,12 @@
       "domains": [
         "gql.twitch.tv",
         "m.twitch.tv",
-        "twitch.tv"
+        "twitch.tv",
+        "www.twitch.tv"
       ],
-      "upstream": "151.101.194.167",
-      "sni_fake": "twitch.tv"
+      "upstream": "3.167.200.113:443",
+      "sni_fake": "",
+      "website": "twitch"
     },
     {
       "name": "store.steampowered.com",
@@ -718,7 +794,8 @@
         "store.steampowered.com"
       ],
       "upstream": "23.46.197.62",
-      "sni_fake": "store.steampowered.com"
+      "sni_fake": "store.steampowered.com",
+      "website": "steam"
     },
     {
       "name": "pluto.web.telegram.org",
@@ -730,7 +807,12 @@
         "pluto.web.telegram.org"
       ],
       "upstream": "pluto.web.telegram.org",
-      "sni_fake": "pluto.web.telegram.org"
+      "sni_fake": "g.cn",
+      "website": "telegram",
+      "alpn_policy": "h1_only",
+      "utls_policy": "off",
+      "connect_policy": "mitm",
+      "sni_policy": "fake"
     },
     {
       "name": "kws1.web.telegram.org",
@@ -744,7 +826,12 @@
         "kws5.web.telegram.org"
       ],
       "upstream": "pluto.web.telegram.org",
-      "sni_fake": "kws1.web.telegram.org"
+      "sni_fake": "g.cn",
+      "website": "telegram",
+      "alpn_policy": "h1_only",
+      "utls_policy": "off",
+      "connect_policy": "mitm",
+      "sni_policy": "fake"
     },
     {
       "name": "kws2.web.telegram.org",
@@ -760,7 +847,12 @@
         "vesta.web.telegram.org"
       ],
       "upstream": "kws2.kw4.venus.vesta.web.telegram.org",
-      "sni_fake": "kws2.web.telegram.org"
+      "sni_fake": "g.cn",
+      "website": "telegram",
+      "alpn_policy": "h1_only",
+      "utls_policy": "off",
+      "connect_policy": "mitm",
+      "sni_policy": "fake"
     },
     {
       "name": "flora-1.web.telegram.org",
@@ -769,7 +861,12 @@
         "flora-1.web.telegram.org"
       ],
       "upstream": "flora.1.web.telegram.org",
-      "sni_fake": "flora-1.web.telegram.org"
+      "sni_fake": "g.cn",
+      "website": "telegram",
+      "alpn_policy": "h1_only",
+      "utls_policy": "off",
+      "connect_policy": "mitm",
+      "sni_policy": "fake"
     },
     {
       "name": "flora.web.telegram.org",
@@ -779,7 +876,12 @@
         "web.telegram.org"
       ],
       "upstream": "149.154.170.200",
-      "sni_fake": "flora.web.telegram.org"
+      "sni_fake": "g.cn",
+      "website": "telegram",
+      "alpn_policy": "h1_only",
+      "utls_policy": "off",
+      "connect_policy": "mitm",
+      "sni_policy": "fake"
     },
     {
       "name": "telegram.org",
@@ -792,7 +894,12 @@
         "tg.dev"
       ],
       "upstream": "136.244.94.246",
-      "sni_fake": "telegram.org"
+      "sni_fake": "g.cn",
+      "website": "telegram",
+      "alpn_policy": "h1_only",
+      "utls_policy": "off",
+      "connect_policy": "mitm",
+      "sni_policy": "fake"
     },
     {
       "name": "cdn1.cdn-telegram.org",
@@ -801,7 +908,12 @@
         "cdn1.cdn-telegram.org"
       ],
       "upstream": "34.111.15.3",
-      "sni_fake": "cdn1.cdn-telegram.org"
+      "sni_fake": "g.cn",
+      "website": "telegram",
+      "alpn_policy": "h1_only",
+      "utls_policy": "off",
+      "connect_policy": "mitm",
+      "sni_policy": "fake"
     },
     {
       "name": "cdn4.cdn-telegram.org",
@@ -810,7 +922,12 @@
         "cdn4.cdn-telegram.org"
       ],
       "upstream": "34.111.35.152",
-      "sni_fake": "cdn4.cdn-telegram.org"
+      "sni_fake": "g.cn",
+      "website": "telegram",
+      "alpn_policy": "h1_only",
+      "utls_policy": "off",
+      "connect_policy": "mitm",
+      "sni_policy": "fake"
     },
     {
       "name": "cdn5.cdn-telegram.org",
@@ -819,7 +936,12 @@
         "cdn5.cdn-telegram.org"
       ],
       "upstream": "34.111.108.175",
-      "sni_fake": "cdn5.cdn-telegram.org"
+      "sni_fake": "g.cn",
+      "website": "telegram",
+      "alpn_policy": "h1_only",
+      "utls_policy": "off",
+      "connect_policy": "mitm",
+      "sni_policy": "fake"
     },
     {
       "name": "v2ex.com",
@@ -828,7 +950,8 @@
         "v2ex.com"
       ],
       "upstream": "v2ex.com",
-      "sni_fake": "v2ex.com"
+      "sni_fake": "v2ex.com",
+      "website": "v2ex"
     },
     {
       "name": "onedrive.live.com",
@@ -837,7 +960,8 @@
         "onedrive.live.com"
       ],
       "upstream": "13.107.42.13",
-      "sni_fake": "onedrive.live.com"
+      "sni_fake": "onedrive.live.com",
+      "website": "microsoft"
     },
     {
       "name": "mega.io",
@@ -846,7 +970,8 @@
         "mega.io"
       ],
       "upstream": "66.203.127.11",
-      "sni_fake": "mega.io"
+      "sni_fake": "mega.io",
+      "website": "mega"
     },
     {
       "name": "mega.nz",
@@ -855,7 +980,8 @@
         "mega.nz"
       ],
       "upstream": "31.216.144.5",
-      "sni_fake": "mega.nz"
+      "sni_fake": "mega.nz",
+      "website": "mega"
     },
     {
       "name": "api.mega.co.nz",
@@ -864,7 +990,8 @@
         "api.mega.co.nz"
       ],
       "upstream": "66.203.125.15",
-      "sni_fake": "api.mega.co.nz"
+      "sni_fake": "api.mega.co.nz",
+      "website": "mega"
     },
     {
       "name": "rfi.fr",
@@ -873,7 +1000,8 @@
         "rfi.fr"
       ],
       "upstream": "118.214.247.61",
-      "sni_fake": "rfi.fr"
+      "sni_fake": "rfi.fr",
+      "website": "rfi"
     },
     {
       "name": "graphql.api.dailymotion.com",
@@ -882,7 +1010,8 @@
         "graphql.api.dailymotion.com"
       ],
       "upstream": "34.84.14.157",
-      "sni_fake": "graphql.api.dailymotion.com"
+      "sni_fake": "graphql.api.dailymotion.com",
+      "website": "dailymotion"
     },
     {
       "name": "geo.dailymotion.com",
@@ -892,7 +1021,8 @@
         "geo.player.dailymotion.com"
       ],
       "upstream": "35.82.199.74",
-      "sni_fake": "geo.dailymotion.com"
+      "sni_fake": "geo.dailymotion.com",
+      "website": "dailymotion"
     },
     {
       "name": "dmads.dailymotion.com",
@@ -901,7 +1031,8 @@
         "dmads.dailymotion.com"
       ],
       "upstream": "65.8.161.92",
-      "sni_fake": "dmads.dailymotion.com"
+      "sni_fake": "dmads.dailymotion.com",
+      "website": "dailymotion"
     },
     {
       "name": "dailymotion.com",
@@ -910,7 +1041,8 @@
         "dailymotion.com"
       ],
       "upstream": "195.8.215.136",
-      "sni_fake": "dailymotion.com"
+      "sni_fake": "dailymotion.com",
+      "website": "dailymotion"
     },
     {
       "name": "dailymotion.com",
@@ -919,7 +1051,8 @@
         "dailymotion.com"
       ],
       "upstream": "34.84.14.157",
-      "sni_fake": "dailymotion.com"
+      "sni_fake": "dailymotion.com",
+      "website": "dailymotion"
     },
     {
       "name": "gravatar.com",
@@ -928,7 +1061,8 @@
         "gravatar.com"
       ],
       "upstream": "192.0.80.240",
-      "sni_fake": "gravatar.com"
+      "sni_fake": "gravatar.com",
+      "website": "gravatar"
     },
     {
       "name": "patreon.com",
@@ -937,7 +1071,8 @@
         "patreon.com"
       ],
       "upstream": "104.16.25.14",
-      "sni_fake": "patreon.com"
+      "sni_fake": "patreon.com",
+      "website": "patreon"
     },
     {
       "name": "patreonusercontent.com",
@@ -946,7 +1081,8 @@
         "patreonusercontent.com"
       ],
       "upstream": "104.18.70.106",
-      "sni_fake": "patreonusercontent.com"
+      "sni_fake": "patreonusercontent.com",
+      "website": "patreon"
     },
     {
       "name": "identity.flickr.com",
@@ -955,7 +1091,8 @@
         "identity.flickr.com"
       ],
       "upstream": "3.209.240.130",
-      "sni_fake": "identity.flickr.com"
+      "sni_fake": "identity.flickr.com",
+      "website": "flickr"
     },
     {
       "name": "flickr.com",
@@ -964,7 +1101,8 @@
         "flickr.com"
       ],
       "upstream": "13.33.142.102",
-      "sni_fake": "flickr.com"
+      "sni_fake": "flickr.com",
+      "website": "flickr"
     },
     {
       "name": "imgur.com",
@@ -973,7 +1111,8 @@
         "imgur.com"
       ],
       "upstream": "199.232.196.193",
-      "sni_fake": "imgur.com"
+      "sni_fake": "imgur.com",
+      "website": "imgur"
     },
     {
       "name": "thetvdb.com",
@@ -982,7 +1121,8 @@
         "thetvdb.com"
       ],
       "upstream": "13.35.222.88",
-      "sni_fake": "thetvdb.com"
+      "sni_fake": "thetvdb.com",
+      "website": "thetvdb"
     },
     {
       "name": "vercel.app",
@@ -991,7 +1131,8 @@
         "vercel.app"
       ],
       "upstream": "64.29.17.193",
-      "sni_fake": "vercel.com"
+      "sni_fake": "vercel.com",
+      "website": "vercel"
     },
     {
       "name": "hub.docker.com",
@@ -1000,7 +1141,8 @@
         "hub.docker.com"
       ],
       "upstream": "hub.docker.com",
-      "sni_fake": "hub.docker.com"
+      "sni_fake": "hub.docker.com",
+      "website": "docker"
     },
     {
       "name": "prod-publishers-content.s3.us-east-1.amazonaws.com",
@@ -1009,17 +1151,20 @@
         "prod-publishers-content.s3.us-east-1.amazonaws.com"
       ],
       "upstream": "prod.publishers.content.s3.us.east.1.amazonaws.com",
-      "sni_fake": "prod-publishers-content.s3.us-east-1.amazonaws.com"
+      "sni_fake": "prod-publishers-content.s3.us-east-1.amazonaws.com",
+      "website": "amazon"
     },
     {
       "name": "xvideos.com",
       "enabled": true,
       "domains": [
         "off",
-        "xvideos.com"
+        "xvideos.com",
+        "www.xvideos.com"
       ],
-      "upstream": "xvideos.com",
-      "sni_fake": "xvideos.com"
+      "upstream": "185.88.181.2:443,185.88.181.3:443,185.88.181.4:443,185.88.181.5:443,185.88.181.6:443,185.88.181.7:443,185.88.181.8:443,185.88.181.9:443,185.88.181.10:443,185.88.181.11:443",
+      "sni_fake": "",
+      "website": "xvideos"
     },
     {
       "name": "xnxx.com",
@@ -1029,7 +1174,8 @@
         "xnxx.com"
       ],
       "upstream": "xnxx.com",
-      "sni_fake": "xnxx.com"
+      "sni_fake": "xnxx.com",
+      "website": "xnxx"
     },
     {
       "name": "download.tails.net",
@@ -1038,7 +1184,8 @@
         "download.tails.net"
       ],
       "upstream": "204.13.164.63:443",
-      "sni_fake": "download.tails.net"
+      "sni_fake": "download.tails.net",
+      "website": "tails"
     },
     {
       "name": "quora.com",
@@ -1050,7 +1197,8 @@
         "www.tch.quora.com"
       ],
       "upstream": "quora.com",
-      "sni_fake": "fs.quoracdn.net"
+      "sni_fake": "fs.quoracdn.net",
+      "website": "quora"
     },
     {
       "name": "audiomack.com",
@@ -1061,7 +1209,38 @@
         "prod.us-east-1.aws.audiomack.com"
       ],
       "upstream": "audiomack.com",
-      "sni_fake": "audiomack.com"
+      "sni_fake": "audiomack.com",
+      "website": "audiomack"
+    },
+    {
+      "name": "googlevideo.com",
+      "enabled": true,
+      "domains": [
+        "googlevideo.com",
+        "*.googlevideo.com"
+      ],
+      "upstream": "$1.gvt1.com:443",
+      "sni_fake": "g.cn",
+      "website": "google",
+      "connect_policy": "mitm",
+      "sni_policy": "fake",
+      "alpn_policy": "h1_only",
+      "utls_policy": "off"
+    },
+    {
+      "name": "gvt1.com",
+      "enabled": true,
+      "domains": [
+        "gvt1.com",
+        "*.gvt1.com"
+      ],
+      "upstream": "",
+      "sni_fake": "g.cn",
+      "website": "google",
+      "connect_policy": "mitm",
+      "sni_policy": "fake",
+      "alpn_policy": "h1_only",
+      "utls_policy": "off"
     }
   ]
 }
