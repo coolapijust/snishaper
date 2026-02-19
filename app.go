@@ -143,6 +143,7 @@ func (a *App) startup(ctx context.Context) {
 	}
 
 	a.proxyServer.SetRuleManager(a.ruleManager)
+	a.proxyServer.UpdateCloudflareConfig(a.ruleManager.GetCloudflareConfig())
 	a.proxyServer.SetCertGenerator(a.certManager)
 
 	if err := sysproxy.SaveOriginalProxySettings(); err != nil {
@@ -413,6 +414,18 @@ func (a *App) UpdateUpstream(u proxy.Upstream) error {
 
 func (a *App) DeleteUpstream(id string) error {
 	return a.ruleManager.DeleteUpstream(id)
+}
+
+func (a *App) GetCloudflareConfig() proxy.CloudflareConfig {
+	return a.ruleManager.GetCloudflareConfig()
+}
+
+func (a *App) UpdateCloudflareConfig(cfg proxy.CloudflareConfig) error {
+	err := a.ruleManager.UpdateCloudflareConfig(cfg)
+	if err == nil {
+		a.proxyServer.UpdateCloudflareConfig(cfg)
+	}
+	return err
 }
 
 func (a *App) ExportConfig() (string, error) {

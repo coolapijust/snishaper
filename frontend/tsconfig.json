@@ -11,8 +11,19 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
-    "lib": ["ESNext", "DOM"]
+    "lib": [
+      "ESNext",
+      "DOM"
+    ],
+    "allowJs": true
   },
-  "include": ["src/**/*.js", "src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "wailsjs"]
+  "include": [
+    "src/**/*.js",
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "wailsjs"
+  ]
 }

@@ -1,7 +1,7 @@
 import './style.css';
 
-import {StartProxy, StopProxy, IsProxyRunning, GetSiteGroups, AddSiteGroup, DeleteSiteGroup, UpdateSiteGroup, ExportConfig, ImportConfigWithSummary, GetCAInstallStatus, OpenCAFile, GetCACertPEM, GetSystemProxyStatus, EnableSystemProxy, DisableSystemProxy, RegenerateCert, ExportCert, GetListenPort, SetListenPort, GetStats, SetProxyMode, GetProxyMode, GetRecentLogs, ClearLogs, ProxySelfCheck, GetProxyDiagnostics, GetRuleHitCounts} from '../wailsjs/go/main/App';
-import {WindowMinimise, WindowToggleMaximise, Quit} from '../wailsjs/runtime/runtime';
+import { StartProxy, StopProxy, IsProxyRunning, GetSiteGroups, AddSiteGroup, DeleteSiteGroup, UpdateSiteGroup, ExportConfig, ImportConfigWithSummary, GetCAInstallStatus, OpenCAFile, GetCACertPEM, GetSystemProxyStatus, EnableSystemProxy, DisableSystemProxy, RegenerateCert, ExportCert, GetListenPort, SetListenPort, GetStats, SetProxyMode, GetProxyMode, GetRecentLogs, ClearLogs, ProxySelfCheck, GetProxyDiagnostics, GetRuleHitCounts, GetCloudflareConfig, UpdateCloudflareConfig } from '../wailsjs/go/main/App';
+import { WindowMinimise, WindowToggleMaximise, Quit } from '../wailsjs/runtime/runtime';
 
 let isRunning = false;
 let systemProxyEnabled = false;
@@ -16,15 +16,15 @@ let backendLogPoll = null;
 let rulesSearchQuery = '';
 let rulesViewMode = 'mitm';
 
-window.windowMinimise = function() {
+window.windowMinimise = function () {
     WindowMinimise();
 };
 
-window.windowToggleMaximise = function() {
+window.windowToggleMaximise = function () {
     WindowToggleMaximise();
 };
 
-window.windowCloseApp = function() {
+window.windowCloseApp = function () {
     Quit();
 };
 
@@ -60,9 +60,9 @@ function updateStatus() {
     const btnSysProxy = document.getElementById('btn-sysproxy');
     const proxyMode = document.getElementById('proxy-mode');
     const mode = document.querySelector('input[name="mode"]:checked').value;
-    
+
     proxyMode.textContent = mode === 'mitm' ? 'MITM' : '透传';
-    
+
     if (isRunning) {
         statusEl.classList.add('running');
         statusEl.querySelector('.status-text').textContent = '运行中';
@@ -74,7 +74,7 @@ function updateStatus() {
         btnStart.style.display = 'inline-flex';
         btnStop.style.display = 'none';
     }
-    
+
     if (btnSysProxy) {
         btnSysProxy.textContent = `系统代理: ${systemProxyEnabled ? '开' : '关'}`;
         btnSysProxy.className = systemProxyEnabled ? 'btn btn-success' : 'btn btn-secondary';
@@ -91,7 +91,7 @@ async function loadSystemProxyStatus() {
     }
 }
 
-window.toggleSystemProxy = async function() {
+window.toggleSystemProxy = async function () {
     try {
         if (systemProxyEnabled) {
             await DisableSystemProxy();
@@ -137,9 +137,9 @@ window.toggleSystemProxy = async function() {
     }
 };
 
-window.startProxy = async function() {
+window.startProxy = async function () {
     const mode = document.querySelector('input[name="mode"]:checked').value;
-    
+
     if (mode === 'mitm') {
         try {
             const status = await GetCAInstallStatus();
@@ -151,13 +151,13 @@ window.startProxy = async function() {
             console.error('Check cert status error:', err);
         }
     }
-    
+
     try {
         await SetProxyMode(mode);
         await StartProxy();
         isRunning = true;
         startTime = Date.now();
-        
+
         statsInterval = setInterval(async () => {
             document.getElementById('stat-uptime').textContent = formatUptime();
             try {
@@ -174,7 +174,7 @@ window.startProxy = async function() {
                 console.error('Get stats error:', err);
             }
         }, 1000);
-        
+
         addLog('info', '代理已启动');
     } catch (err) {
         console.error('Start proxy error:', err);
@@ -183,7 +183,7 @@ window.startProxy = async function() {
     updateStatus();
 };
 
-window.stopProxy = async function() {
+window.stopProxy = async function () {
     try {
         if (systemProxyEnabled) {
             await DisableSystemProxy();
@@ -206,29 +206,29 @@ window.stopProxy = async function() {
 
 function addLog(level, message) {
     if (!loggingEnabled) return;
-    
+
     const container = document.getElementById('log-container');
     if (!container) return;
-    
+
     const now = new Date();
     const timeStr = now.toTimeString().split(' ')[0];
-    
+
     const entry = document.createElement('div');
     entry.className = 'log-entry';
     entry.innerHTML = `<span class="log-time">${timeStr}</span><span class="log-level ${level}">${level.toUpperCase()}</span><span>${message}</span>`;
-    
+
     container.appendChild(entry);
     container.scrollTop = container.scrollHeight;
-    
+
     if (container.children.length > 500) {
         container.removeChild(container.firstChild);
     }
 }
 
-function showPage(pageId) {
+window.showPage = function (pageId) {
     document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
     document.getElementById('page-' + pageId).style.display = 'block';
-    
+
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.remove('active');
         if (item.dataset.page === pageId) {
@@ -236,6 +236,9 @@ function showPage(pageId) {
         }
     });
 
+    if (pageId === 'settings') {
+        loadCloudflareConfig();
+    }
     if (pageId === 'rules') {
         loadSiteGroups();
     }
@@ -247,6 +250,10 @@ function showPage(pageId) {
     } else if (backendLogPoll) {
         clearInterval(backendLogPoll);
         backendLogPoll = null;
+    }
+
+    if (pageId === 'cloudflare') {
+        loadCloudflareRules();
     }
 }
 
@@ -321,7 +328,7 @@ async function loadSiteGroups() {
         const [groups, hitMap] = await Promise.all([GetSiteGroups(), GetRuleHitCounts()]);
         const container = document.getElementById('rules-list');
         const query = rulesSearchQuery.trim().toLowerCase();
-        
+
         if (!groups || groups.length === 0) {
             container.innerHTML = `
                 <div class="empty-state">
@@ -332,7 +339,7 @@ async function loadSiteGroups() {
             `;
             return;
         }
-        
+
         container.innerHTML = '';
 
         const buildModeColumn = (mode, title) => {
@@ -403,7 +410,7 @@ async function loadSiteGroups() {
                     const addBtn = document.createElement('button');
                     addBtn.className = 'btn btn-secondary';
                     addBtn.textContent = '+ 本网站规则';
-                    addBtn.onclick = () => window.showAddRuleModal({website, mode});
+                    addBtn.onclick = () => window.showAddRuleModal({ website, mode });
 
                     tools.appendChild(countEl);
                     tools.appendChild(addBtn);
@@ -418,7 +425,7 @@ async function loadSiteGroups() {
                             <div class="rule-info">
                                 <div class="rule-name">${group.name || '未命名'}</div>
                                 <div class="rule-domains">${(group.domains || []).join(', ')}</div>
-                                <div class="rule-domains">命中: ${hitMap[group.id] || 0}</div>
+                                <div class="rule-domains">命中: ${hitMap[group.id] || 0} ${group.ech_enabled ? ' | <span style="color:var(--success)">ECH开启</span>' : ''} ${group.use_cf_pool ? ' | <span style="color:var(--primary)">优选IP</span>' : ''}</div>
                                 <div class="rule-mode">${group.mode === 'mitm' ? 'MITM' : '透传'}${group.upstream ? ' → ' + group.upstream : ''}</div>
                             </div>
                             <div class="rule-actions">
@@ -443,7 +450,7 @@ async function loadSiteGroups() {
     }
 }
 
-window.deleteSiteGroup = async function(id) {
+window.deleteSiteGroup = async function (id) {
     try {
         await DeleteSiteGroup(id);
         addLog('info', '删除规则: ' + id);
@@ -453,7 +460,7 @@ window.deleteSiteGroup = async function(id) {
     }
 };
 
-window.showAddRuleModal = function() {
+window.showAddRuleModal = function () {
     let defaults = {};
     if (arguments.length > 0 && typeof arguments[0] === 'object' && arguments[0] !== null) {
         defaults = arguments[0];
@@ -466,12 +473,15 @@ window.showAddRuleModal = function() {
     document.getElementById('input-mode').value = defaults.mode || 'mitm';
     document.getElementById('input-upstream').value = '';
     document.getElementById('input-snifake').value = '';
+    document.getElementById('input-ech-domain').value = '';
     document.getElementById('input-utls-policy').value = '';
+    document.getElementById('input-ech-enabled').checked = false;
+    document.getElementById('input-use-cf-pool').checked = false;
     document.getElementById('input-enabled').checked = true;
     document.getElementById('modal-overlay').style.display = 'flex';
 };
 
-window.showEditRuleModal = async function(id) {
+window.showEditRuleModal = async function (id) {
     try {
         const groups = await GetSiteGroups();
         const group = groups.find(g => g.id === id);
@@ -488,7 +498,10 @@ window.showEditRuleModal = async function(id) {
         document.getElementById('input-mode').value = group.mode || 'mitm';
         document.getElementById('input-upstream').value = group.upstream || '';
         document.getElementById('input-snifake').value = group.sni_fake || '';
+        document.getElementById('input-ech-domain').value = group.ech_domain || '';
         document.getElementById('input-utls-policy').value = group.utls_policy || '';
+        document.getElementById('input-ech-enabled').checked = !!group.ech_enabled;
+        document.getElementById('input-use-cf-pool').checked = !!group.use_cf_pool;
         document.getElementById('input-enabled').checked = group.enabled !== false;
         document.getElementById('modal-overlay').style.display = 'flex';
     } catch (err) {
@@ -497,30 +510,33 @@ window.showEditRuleModal = async function(id) {
     }
 };
 
-window.closeModal = function() {
+window.closeModal = function () {
     document.getElementById('modal-overlay').style.display = 'none';
 };
 
-window.confirmModal = async function() {
+window.confirmModal = async function () {
     const name = document.getElementById('input-name').value;
     const website = document.getElementById('input-website').value.trim();
     const domains = document.getElementById('input-domains').value.split('\n').filter(d => d.trim());
     const mode = document.getElementById('input-mode').value;
     const upstream = document.getElementById('input-upstream').value;
     const snifake = document.getElementById('input-snifake').value;
+    const echDomain = document.getElementById('input-ech-domain').value.trim();
     const utlsPolicy = document.getElementById('input-utls-policy').value;
+    const echEnabled = document.getElementById('input-ech-enabled').checked;
+    const useCfPool = document.getElementById('input-use-cf-pool').checked;
     const enabled = document.getElementById('input-enabled').checked;
-    
+
     if (!name || domains.length === 0) {
         addLog('warn', '请填写名称和域名');
         return;
     }
-    
+
     if (mode === 'transparent' && !upstream) {
         addLog('warn', '透传模式需要填写上游服务器地址');
         return;
     }
-    
+
     try {
         const groupData = {
             name,
@@ -529,10 +545,13 @@ window.confirmModal = async function() {
             mode,
             upstream,
             sni_fake: snifake,
+            ech_domain: echDomain,
             utls_policy: utlsPolicy,
+            ech_enabled: echEnabled,
+            use_cf_pool: useCfPool,
             enabled
         };
-        
+
         if (editingGroupId) {
             groupData.id = editingGroupId;
             await UpdateSiteGroup(groupData);
@@ -542,7 +561,7 @@ window.confirmModal = async function() {
             await AddSiteGroup(groupData);
             addLog('info', '添加规则: ' + name);
         }
-        
+
         loadSiteGroups();
         closeModal();
     } catch (err) {
@@ -550,7 +569,7 @@ window.confirmModal = async function() {
     }
 };
 
-window.clearLogs = async function() {
+window.clearLogs = async function () {
     try {
         await ClearLogs();
         await refreshBackendLogs();
@@ -560,7 +579,7 @@ window.clearLogs = async function() {
     }
 };
 
-window.runProxySelfCheck = async function() {
+window.runProxySelfCheck = async function () {
     try {
         const result = await ProxySelfCheck();
         addLog('info', result || '自检完成');
@@ -570,10 +589,10 @@ window.runProxySelfCheck = async function() {
     }
 };
 
-window.exportConfig = async function() {
+window.exportConfig = async function () {
     try {
         const config = await ExportConfig();
-        const blob = new Blob([config], {type: 'application/json'});
+        const blob = new Blob([config], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -588,7 +607,7 @@ window.exportConfig = async function() {
     }
 };
 
-window.importConfig = function() {
+window.importConfig = function () {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json';
@@ -620,7 +639,7 @@ window.importConfig = function() {
     input.click();
 };
 
-window.regenerateCert = async function() {
+window.regenerateCert = async function () {
     try {
         await RegenerateCert();
         addLog('info', '证书已重新生成，请重新安装到系统信任库');
@@ -629,10 +648,10 @@ window.regenerateCert = async function() {
     }
 };
 
-window.exportCert = async function() {
+window.exportCert = async function () {
     try {
         const pem = await ExportCert();
-        const blob = new Blob([pem], {type: 'application/x-pem-file'});
+        const blob = new Blob([pem], { type: 'application/x-pem-file' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -645,12 +664,214 @@ window.exportCert = async function() {
     }
 };
 
-window.showCertModal = async function() {
+async function loadCloudflareRules() {
+    try {
+        const groups = await GetSiteGroups();
+        const container = document.getElementById('cf-rules-container');
+        if (!container) return;
+        container.innerHTML = '';
+
+        // Filter for enabled ECH rules
+        const cfRules = (groups || []).filter(g => g.ech_enabled);
+
+        if (cfRules.length === 0) {
+            container.innerHTML = `
+                <div style="text-align:center; padding: 40px; color: var(--text-secondary); background: var(--bg-dark); border-radius: 12px; border: 1px dashed var(--border);">
+                    <div style="font-size: 24px; margin-bottom: 8px;">🚀</div>
+                    暂无 ECH 加速规则，在上方输入域名开始加速
+                </div>`;
+            return;
+        }
+
+        cfRules.forEach(group => {
+            const card = document.createElement('div');
+            card.className = 'card-item';
+
+            let domains = (group.domains || []).join(', ');
+            if (domains.length > 40) domains = domains.substring(0, 40) + '...';
+
+            let ip = group.upstream || (group.use_cf_pool ? '全局优选池' : '自动');
+            if (ip.includes(':')) ip = ip.split(':')[0];
+
+            let echSource = group.ech_domain;
+            const isDefaultECH = !echSource || echSource === 'crypto.cloudflare.com';
+
+            card.innerHTML = `
+                <div class="card-info">
+                    <div class="card-title">${domains}</div>
+                    <div class="card-meta">
+                        <span class="card-badge">🌐 ${ip}</span>
+                        <span class="card-badge" style="${isDefaultECH ? 'opacity: 0.6;' : 'color: var(--accent);'}">
+                            🔒 ECH: ${isDefaultECH ? '自动' : echSource}
+                        </span>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-secondary btn-sm" onclick="showEditRuleModal('${group.id}')">编辑</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteCfRule('${group.id}')">移除</button>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    } catch (err) {
+        console.error("Failed to load CF rules:", err);
+        addLog('error', '加载 Cloudflare 规则失败: ' + err);
+    }
+}
+
+// IP Pool Tagging Logic
+let currentIpPool = [];
+
+async function loadCloudflareConfig() {
+    try {
+        const config = await GetCloudflareConfig();
+        const dohEl = document.getElementById('setting-cf-doh');
+        if (dohEl) dohEl.value = config.doh_url || '';
+        currentIpPool = config.preferred_ips || [];
+        renderIpTags();
+    } catch (err) {
+        console.error('Load CF config error:', err);
+    }
+}
+
+function renderIpTags() {
+    const container = document.getElementById('ip-tag-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (currentIpPool.length === 0) {
+        container.innerHTML = '<span style="color: var(--text-secondary); font-size: 12px; font-style: italic;">池中暂无 IP，请在上方输入</span>';
+    }
+
+    currentIpPool.forEach((ip, index) => {
+        const tag = document.createElement('div');
+        tag.className = 'ip-tag';
+        tag.innerHTML = `
+            <span>${ip}</span>
+            <span class="remove-btn" onclick="removeIpTag(${index})">×</span>
+        `;
+        container.appendChild(tag);
+    });
+}
+
+window.removeIpTag = async function (index) {
+    currentIpPool.splice(index, 1);
+    await saveIpPool();
+    renderIpTags();
+};
+
+async function saveCloudflareConfig() {
+    const doh_url = document.getElementById('setting-cf-doh')?.value.trim();
+    try {
+        await UpdateCloudflareConfig({ doh_url, preferred_ips: currentIpPool });
+        addLog('info', 'Cloudflare 设置已更新');
+    } catch (err) {
+        addLog('error', '保存 Cloudflare 设置失败: ' + err);
+    }
+}
+
+async function saveIpPool() {
+    await saveCloudflareConfig();
+}
+
+function initIpTagging() {
+    const input = document.getElementById('setting-ip-input');
+    const addBtn = document.getElementById('btn-add-ip');
+    if (!input) return;
+
+    const handleAdd = async () => {
+        const val = input.value.trim();
+        if (val && !currentIpPool.includes(val)) {
+            // Simple IP validation
+            if (/^(\d{1,3}\.){3}\d{1,3}$/.test(val) || val.includes(':')) {
+                currentIpPool.push(val);
+                input.value = '';
+                await saveIpPool();
+                renderIpTags();
+            } else {
+                addLog('warn', '无效的 IP 格式');
+            }
+        }
+    };
+
+    input.addEventListener('keydown', async (e) => {
+        if (e.key === 'Enter') {
+            await handleAdd();
+        }
+    });
+
+    if (addBtn) {
+        addBtn.onclick = handleAdd;
+    }
+}
+
+window.addCloudflareRule = async function () {
+    const domainsText = document.getElementById('cf-input-domains').value.trim();
+    if (!domainsText) {
+        window.alert("请输入目标域名列表");
+        return;
+    }
+
+    const ipInput = document.getElementById('cf-input-ip').value.trim();
+    const echDomainInput = document.getElementById('cf-input-ech-domain').value.trim();
+    const echDomain = echDomainInput || 'crypto.cloudflare.com';
+
+    // Split lines and filter empty
+    const domains = domainsText.split('\n').map(d => d.trim()).filter(d => d);
+    if (domains.length === 0) return;
+
+    // Logic: Create one siteGroup containing all these domains.
+    // Name it based on the first domain.
+    const groupName = domains[0] + (domains.length > 1 ? ` 等${domains.length}个` : '');
+
+    const newGroup = {
+        name: groupName,
+        website: domains[0].split('.')[0],
+        domains: domains,
+        mode: "mitm",
+        upstream: ipInput ? (ipInput.includes(':') ? ipInput : ipInput + ":443") : "",
+        ech_enabled: true,
+        ech_domain: echDomain,
+        use_cf_pool: !ipInput, // If no specific IP entered, use pool
+        sni_policy: "fake",    // Force fake SNI policy (ECH handles outer)
+        utls_policy: "auto",
+        enabled: true
+    };
+
+    try {
+        await AddSiteGroup(newGroup);
+        document.getElementById('cf-input-domains').value = '';
+        document.getElementById('cf-input-ip').value = '';
+        // Don't clear ech-domain, keep default or user choice
+
+        loadCloudflareRules();
+        addLog('info', `已添加 Cloudflare 规则: ${groupName}`);
+        window.alert("添加成功！");
+    } catch (err) {
+        window.alert("添加失败: " + err);
+        addLog('error', "添加 Cloudflare 规则失败: " + err);
+    }
+};
+
+window.deleteCfRule = async function (id) {
+    if (!window.confirm("确定要删除此加速规则吗？")) return;
+    try {
+        await DeleteSiteGroup(id);
+        loadCloudflareRules();
+        addLog('info', '删除 Cloudflare 规则: ' + id);
+    } catch (err) {
+        window.alert("删除失败: " + err);
+    }
+};
+
+window.loadCloudflareRules = loadCloudflareRules;
+
+window.showCertModal = async function () {
     const modal = document.getElementById('cert-modal');
     const statusEl = document.getElementById('cert-install-status');
     const pathEl = document.getElementById('cert-path');
     const helpEl = document.getElementById('cert-help-text');
-    
+
     try {
         const status = await GetCAInstallStatus();
         statusEl.textContent = status.Installed ? '已安装' : '未安装';
@@ -662,15 +883,15 @@ window.showCertModal = async function() {
         statusEl.textContent = '获取失败';
         pathEl.textContent = err.message;
     }
-    
+
     modal.style.display = 'flex';
 };
 
-window.closeCertModal = function() {
+window.closeCertModal = function () {
     document.getElementById('cert-modal').style.display = 'none';
 };
 
-window.openCertFile = async function() {
+window.openCertFile = async function () {
     try {
         await OpenCAFile();
         addLog('info', '已打开证书文件');
@@ -690,7 +911,7 @@ function updateThemeIcon(theme) {
 async function checkCertAndPrompt() {
     const mode = document.querySelector('input[name="mode"]:checked').value;
     if (mode !== 'mitm') return;
-    
+
     try {
         const status = await GetCAInstallStatus();
         if (!status.Installed) {
@@ -705,7 +926,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const theme = localStorage.getItem('theme') || 'light';
     document.documentElement.setAttribute('data-theme', theme);
     updateThemeIcon(theme);
-    
+
     document.getElementById('theme-toggle').addEventListener('click', () => {
         const currentTheme = document.documentElement.getAttribute('data-theme');
         const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
@@ -713,15 +934,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         localStorage.setItem('theme', nextTheme);
         updateThemeIcon(nextTheme);
     });
-    
+
     document.querySelectorAll('.nav-item').forEach(item => {
         item.addEventListener('click', (e) => {
             if (item.id === 'theme-toggle') return;
             e.preventDefault();
             const page = item.dataset.page;
             showPage(page);
+            if (page === 'cloudflare') loadCloudflareRules();
+            if (page === 'settings') loadCloudflareConfig();
         });
     });
+
+    initIpTagging();
+    loadCloudflareConfig();
 
     const rulesSearch = document.getElementById('rules-search');
     if (rulesSearch) {
@@ -829,7 +1055,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     updateStatus();
-    
+
     await loadSystemProxyStatus();
     await checkCertAndPrompt();
+
+    await loadCloudflareConfig();
+    document.getElementById('setting-cf-doh')?.addEventListener('change', saveCloudflareConfig);
 });

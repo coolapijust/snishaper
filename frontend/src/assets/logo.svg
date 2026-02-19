@@ -1,0 +1,53 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Background Gradient: Solid Tech Blue -->
+    <linearGradient id="shieldBg" x1="128" y1="20" x2="128" y2="240" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2196F3" />
+      <stop offset="100%" stop-color="#0D47A1" />
+    </linearGradient>
+
+    <!-- Glossy Highlight -->
+    <linearGradient id="gloss" x1="50" y1="20" x2="150" y2="150" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="white" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="white" stop-opacity="0"/>
+    </linearGradient>
+
+    <filter id="dropShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="rgba(0,0,0,0.3)"/>
+    </filter>
+  </defs>
+
+  <!-- Classic Shield Shape -->
+  <!-- Flat top, straight sides down to 100, then curve to 128,240 -->
+  <path d="M128 20 L40 20 L40 110 C40 170 75 215 128 240 C181 215 216 170 216 110 L216 20 Z" 
+        fill="url(#shieldBg)" 
+        filter="url(#dropShadow)"/>
+
+  <!-- Glossy Reflection (Top Left) -->
+  <path d="M128 20 L40 20 L40 110 C40 150 55 180 80 200 L128 20Z" fill="url(#gloss)" style="mix-blend-mode: overlay;"/>
+
+  <!-- The 'S' Monogram -->
+  <!-- White, bold, centered -->
+  <path d="M165 90 
+           C165 75 155 65 140 65 
+           H116 
+           C105 65 96 74 96 85 
+           C96 96 105 105 116 105 
+           H140 
+           C151 105 160 114 160 125 
+           C160 136 151 145 140 145 
+           H116 
+           H91 
+           " 
+        stroke="white" 
+        stroke-width="20" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"
+        fill="none" 
+        opacity="0.95"/>
+           
+  <!-- Tech Accent Dots -->
+  <circle cx="91" cy="145" r="8" fill="white"/>
+  <circle cx="165" cy="90" r="8" fill="white"/>
+
+</svg>

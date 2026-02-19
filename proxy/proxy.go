@@ -2,8 +2,10 @@ package proxy
 
 import (
 	"bufio"
+	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -44,15 +46,18 @@ type ProxyServer struct {
 	Fingerprint   string
 	certGenerator CertGenerator
 	recentIngress []string
+	dohResolver   *DoHResolver
+	cfPool        *CloudflarePool
 }
 
 type RuleManager struct {
 	rules      []Rule
 	siteGroups []SiteGroup
 	upstreams  []Upstream
-	configPath string
-	hitCount   map[string]int64
-	mu         sync.RWMutex
+	configPath       string
+	hitCount         map[string]int64
+	cloudflareConfig CloudflareConfig
+	mu               sync.RWMutex
 }
 
 type SiteGroup struct {
@@ -69,6 +74,9 @@ type SiteGroup struct {
 	AlpnPolicy    string   `json:"alpn_policy,omitempty"`    // "", "auto", "h1_only", "h2_h1"
 	UTLSPolicy    string   `json:"utls_policy,omitempty"`    // "", "auto", "on", "off"
 	Enabled       bool     `json:"enabled"`
+	ECHEnabled    bool     `json:"ech_enabled"`
+	ECHDomain     string   `json:"ech_domain"` // Domain used for ECH DoH lookup
+	UseCFPool     bool     `json:"use_cf_pool"`
 }
 
 type Upstream struct {
@@ -79,9 +87,15 @@ type Upstream struct {
 }
 
 type Config struct {
-	ListenPort string      `json:"listen_port"`
-	SiteGroups []SiteGroup `json:"site_groups"`
-	Upstreams  []Upstream  `json:"upstreams"`
+	ListenPort       string           `json:"listen_port"`
+	SiteGroups       []SiteGroup      `json:"site_groups"`
+	Upstreams        []Upstream       `json:"upstreams"`
+	CloudflareConfig CloudflareConfig `json:"cloudflare_config"`
+}
+
+type CloudflareConfig struct {
+	PreferredIPs []string `json:"preferred_ips"`
+	DoHURL       string   `json:"doh_url"`
 }
 
 type Stats struct {
@@ -122,6 +136,9 @@ type Rule struct {
 	UTLSPolicy    string // "", "auto", "on", "off"
 	Enabled       bool
 	SiteID        string
+	ECHEnabled    bool
+	ECHDomain     string
+	UseCFPool     bool
 }
 
 func mergeRule(base, overlay Rule) Rule {
@@ -533,6 +550,8 @@ func NewProxyServer(addr string) *ProxyServer {
 		mode:        "mitm",
 		certCache:   map[string]*tls.Certificate{},
 		Fingerprint: "Chrome",
+		dohResolver: NewDoHResolver(""),
+		cfPool:      NewCloudflarePool([]string{}),
 	}
 }
 
@@ -546,6 +565,20 @@ func (p *ProxyServer) SetCertGenerator(cg CertGenerator) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.certGenerator = cg
+}
+
+func (p *ProxyServer) UpdateCloudflareConfig(cfg CloudflareConfig) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.dohResolver != nil {
+		p.dohResolver.ServerURL = cfg.DoHURL
+		if p.dohResolver.ServerURL == "" {
+			p.dohResolver.ServerURL = "https://223.5.5.5/dns-query"
+		}
+	}
+	if p.cfPool != nil {
+		p.cfPool.UpdateIPs(cfg.PreferredIPs)
+	}
 }
 
 func (p *ProxyServer) SetListenAddr(addr string) error {
@@ -746,17 +779,69 @@ func (p *ProxyServer) handleConnect(w http.ResponseWriter, req *http.Request, ru
 		log.Printf("[Connect] Using upstream candidates %v for host %s (mode: %s)", dialCandidates, targetHost, effectiveMode)
 	}
 
+	// Cloudflare Preferred IP Pool integration
+	if rule.UseCFPool && p.cfPool != nil {
+		if preferred := p.cfPool.GetIP(); preferred != "" {
+			preferredAddr := net.JoinHostPort(preferred, "443")
+			// Prepend preferred IP to candidates
+			dialCandidates = append([]string{preferredAddr}, dialCandidates...)
+			dialAddr = preferredAddr
+			log.Printf("[Connect] Using preferred Cloudflare IP: %s for %s", preferred, targetHost)
+		}
+	}
+
 	dialer := &net.Dialer{
 		Timeout:   10 * time.Second,
 		KeepAlive: 30 * time.Second,
 	}
-	for _, candidate := range dialCandidates {
-		conn, err = dialer.Dial("tcp", candidate)
-		if err == nil {
-			dialAddr = candidate
-			break
+	// Parallel Dialing (Racing)
+	if len(dialCandidates) > 1 {
+		type dialResult struct {
+			conn net.Conn
+			err  error
+			addr string
 		}
-		log.Printf("[Connect] Connect failed to %s: %v", candidate, err)
+		resChan := make(chan dialResult, len(dialCandidates))
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		for _, addr := range dialCandidates {
+			go func(target string) {
+				d := &net.Dialer{Timeout: 5 * time.Second}
+				c, e := d.DialContext(ctx, "tcp", target)
+				select {
+				case resChan <- dialResult{c, e, target}:
+					if e == nil {
+						cancel()
+					}
+				case <-ctx.Done():
+					if c != nil {
+						c.Close()
+					}
+				}
+			}(addr)
+			time.Sleep(50 * time.Millisecond)
+		}
+
+		for i := 0; i < len(dialCandidates); i++ {
+			r := <-resChan
+			if r.err == nil {
+				conn = r.conn
+				dialAddr = r.addr
+				log.Printf("[Connect] Parallel dial winner: %s", dialAddr)
+				break
+			}
+			err = r.err
+		}
+	} else {
+		for _, candidate := range dialCandidates {
+			conn, err = dialer.Dial("tcp", candidate)
+			if err == nil {
+				dialAddr = candidate
+				break
+			}
+			log.Printf("[Connect] Connect failed to %s: %v", candidate, err)
+		}
 	}
 	if err != nil || conn == nil {
 		http.Error(w, "Failed to connect to upstream", http.StatusBadGateway)
@@ -1034,16 +1119,71 @@ func (p *ProxyServer) handleMITM(clientConn, upstreamConn net.Conn, host string,
 	for idx, candidate := range orderedCandidates {
 		var rawConn net.Conn
 		var err error
-		if idx == 0 && upstreamConn != nil && candidate == initialDialAddr {
-			rawConn = upstreamConn
+		// Parallel Dialing (Racing)
+		// If multiple candidates, try them in parallel with a slight delay (Happy Eyeballs style)
+		// For now, simpler implementation: if more than 1 candidate, use a racing helper.
+		if len(orderedCandidates) > 1 {
+			type dialResult struct {
+				conn net.Conn
+				err  error
+				addr string
+			}
+			resChan := make(chan dialResult, len(orderedCandidates))
+			ctx, cancel := context.WithCancel(context.Background())
+			
+			for _, addr := range orderedCandidates {
+				go func(target string) {
+					d := &net.Dialer{Timeout: 5 * time.Second}
+					c, e := d.DialContext(ctx, "tcp", target)
+					select {
+					case resChan <- dialResult{c, e, target}:
+						if e == nil {
+							cancel() // Stop others if we won
+						}
+					case <-ctx.Done():
+						if c != nil {
+							c.Close()
+						}
+					}
+				}(addr)
+				// Slight delay before launching the next one to prefer order but minimize total wait
+				time.Sleep(50 * time.Millisecond)
+			}
+
+			var winner dialResult
+			count := 0
+			for i := 0; i < len(orderedCandidates); i++ {
+				r := <-resChan
+				count++
+				if r.err == nil {
+					winner = r
+					break
+				}
+				lastErr = r.err
+			}
+			cancel() // Final cleanup
+			
+			if winner.conn != nil {
+				rawConn = winner.conn
+				candidate = winner.addr
+				log.Printf("[MITM] Parallel dial winner: %s", candidate)
+			} else {
+				break // All failed
+			}
 		} else {
-			rawConn, err = dialer.Dial("tcp", candidate)
-			if err != nil {
-				lastErr = err
-				log.Printf("[MITM] Upstream dial failed %s: %v", candidate, err)
-				continue
+			// Single candidate logic
+			if idx == 0 && upstreamConn != nil && candidate == initialDialAddr {
+				rawConn = upstreamConn
+			} else {
+				rawConn, err = dialer.Dial("tcp", candidate)
+				if err != nil {
+					lastErr = err
+					log.Printf("[MITM] Upstream dial failed %s: %v", candidate, err)
+					continue
+				}
 			}
 		}
+		
 		_ = rawConn.SetDeadline(time.Time{})
 
 		useUTLS := false
@@ -1061,7 +1201,34 @@ func (p *ProxyServer) handleMITM(clientConn, upstreamConn net.Conn, host string,
 			if upstreamALPN == "" {
 				upstreamALPN = "http/1.1"
 			}
-			uconn := p.GetUConn(rawConn, sniHost, true, upstreamALPN)
+
+			var echConfig []byte
+			if rule.ECHEnabled && p.dohResolver != nil {
+				// Use ECHDomain if configured, otherwise use original host
+				echLookupDomain := rule.ECHDomain
+				if echLookupDomain == "" {
+					echLookupDomain = host
+				}
+				log.Printf("[MITM] Attempting ECH fetch for %s (using %s)", host, echLookupDomain)
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				if val, err := p.dohResolver.ResolveECH(ctx, echLookupDomain); err == nil {
+					echConfig = val
+					log.Printf("[MITM] ECH config fetched successfully (%d bytes)", len(echConfig))
+				} else {
+					log.Printf("[MITM] ECH fetch failed: %v", err)
+				}
+				cancel()
+			}
+
+			// If ECH is enabled and config is present/tried, allow uTLS to handle outer SNI.
+			// The ServerName given to uTLS MUST be the real target (Inner SNI).
+			// If we kept `sniHost` as `linux-do` (from fake policy), ECH would imply `linux-do` as the standard SNI, which fails.
+			targetSNI := sniHost
+			if len(echConfig) > 0 {
+				targetSNI = host
+			}
+
+			uconn := p.GetUConn(rawConn, targetSNI, true, upstreamALPN, echConfig)
 			if err := uconn.Handshake(); err == nil {
 				negotiated := uconn.ConnectionState().NegotiatedProtocol
 				if upstreamALPN != "" && negotiated != upstreamALPN {
@@ -1183,7 +1350,7 @@ func (p *ProxyServer) generateCert(host string, caCert *x509.Certificate, caKey 
 		DNSNames:    []string{host},
 	}
 
-	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	privKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, err
 	}
@@ -1194,7 +1361,12 @@ func (p *ProxyServer) generateCert(host string, caCert *x509.Certificate, caKey 
 	}
 
 	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
-	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(privKey)})
+	
+	keyBytes, err := x509.MarshalECPrivateKey(privKey)
+	if err != nil {
+		return nil, err
+	}
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyBytes})
 
 	cert, err := tls.X509KeyPair(certPEM, keyPEM)
 	if err != nil {
@@ -1307,6 +1479,15 @@ func (rm *RuleManager) LoadConfig() error {
 
 	rm.siteGroups = config.SiteGroups
 	rm.upstreams = config.Upstreams
+	rm.cloudflareConfig = config.CloudflareConfig
+
+	// Sync Cloudflare Config if ProxyServer is linked
+	// Note: In current architecture, RuleManager doesn't have a back-pointer to ProxyServer.
+	// ProxyServer.SetRuleManager is used. We might need to update ProxyServer's pool elsewhere.
+	// But actually, ProxyServer holds the pool, so when LoadConfig is called via the RuleManager
+	// inside ProxyServer, it should be updated.
+	// Wait, ProxyServer has a pointer to RuleManager.
+
 	migrated := false
 	for i := range rm.siteGroups {
 		rm.siteGroups[i].Website = strings.TrimSpace(rm.siteGroups[i].Website)
@@ -1426,6 +1607,9 @@ func (rm *RuleManager) buildRules() {
 				UTLSPolicy:    strings.TrimSpace(sg.UTLSPolicy),
 				Enabled:       true,
 				SiteID:        sg.ID,
+				ECHEnabled:    sg.ECHEnabled,
+				ECHDomain:     sg.ECHDomain,
+				UseCFPool:     sg.UseCFPool,
 			}
 			rm.rules = append(rm.rules, rule)
 		}
@@ -1455,6 +1639,19 @@ func (rm *RuleManager) GetSiteGroups() []SiteGroup {
 	rm.mu.RLock()
 	defer rm.mu.RUnlock()
 	return rm.siteGroups
+}
+
+func (rm *RuleManager) GetCloudflareConfig() CloudflareConfig {
+	rm.mu.RLock()
+	defer rm.mu.RUnlock()
+	return rm.cloudflareConfig
+}
+
+func (rm *RuleManager) UpdateCloudflareConfig(cfg CloudflareConfig) error {
+	rm.mu.Lock()
+	rm.cloudflareConfig = cfg
+	rm.mu.Unlock()
+	return rm.saveConfig()
 }
 
 func (rm *RuleManager) AddSiteGroup(sg SiteGroup) error {
@@ -1540,9 +1737,10 @@ func (rm *RuleManager) DeleteUpstream(id string) error {
 
 func (rm *RuleManager) saveConfig() error {
 	config := Config{
-		ListenPort: "8080",
-		SiteGroups: rm.siteGroups,
-		Upstreams:  rm.upstreams,
+		ListenPort:       "8080",
+		SiteGroups:       rm.siteGroups,
+		Upstreams:        rm.upstreams,
+		CloudflareConfig: rm.cloudflareConfig,
 	}
 
 	data, err := json.MarshalIndent(config, "", "  ")
@@ -1557,10 +1755,11 @@ func generateID() string {
 	return fmt.Sprintf("%d", time.Now().UnixNano())
 }
 
-func (p *ProxyServer) GetUConn(conn net.Conn, sni string, allowInsecure bool, alpn string) *utls.UConn {
+func (p *ProxyServer) GetUConn(conn net.Conn, sni string, allowInsecure bool, alpn string, echConfig []byte) *utls.UConn {
 	config := &utls.Config{
-		ServerName:         sni,
-		InsecureSkipVerify: allowInsecure,
+		ServerName:                     sni,
+		InsecureSkipVerify:             allowInsecure,
+		EncryptedClientHelloConfigList: echConfig,
 	}
 	if strings.TrimSpace(alpn) != "" {
 		config.NextProtos = []string{alpn}

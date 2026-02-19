@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SniShaper - DPI 代理工具</title>
     <link rel="stylesheet" href="/src/style.css">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+    <link rel="icon" href="/src/assets/logo.png">
 </head>
+
 <body>
     <div id="app">
         <aside class="sidebar">
@@ -14,35 +16,42 @@
                 <div class="logo-header">
                     <span class="logo-text">SniShaper</span>
                     <div class="window-controls">
-                        <button class="window-btn" onclick="windowMinimise()" title="最小化"><span class="icon-min"></span></button>
-                        <button class="window-btn" onclick="windowToggleMaximise()" title="最大化/还原"><span class="icon-max"></span></button>
-                        <button class="window-btn window-btn-close" onclick="windowCloseApp()" title="关闭"><span class="icon-close"></span></button>
+                        <button class="window-btn" onclick="windowMinimise()" title="最小化"><span
+                                class="icon-min"></span></button>
+                        <button class="window-btn" onclick="windowToggleMaximise()" title="最大化/还原"><span
+                                class="icon-max"></span></button>
+                        <button class="window-btn window-btn-close" onclick="windowCloseApp()" title="关闭"><span
+                                class="icon-close"></span></button>
                     </div>
                 </div>
             </div>
-                <nav class="nav-menu">
-                    <a href="#" class="nav-item active" data-page="dashboard">
-                        <span class="nav-icon"></span>
-                        <span>仪表盘</span>
-                    </a>
-                    <a href="#" class="nav-item" data-page="rules">
-                        <span class="nav-icon"></span>
-                        <span>规则</span>
-                    </a>
-                    <a href="#" class="nav-item" data-page="logs">
-                        <span class="nav-icon"></span>
-                        <span>日志</span>
-                    </a>
-                    <a href="#" class="nav-item" data-page="settings">
-                        <span class="nav-icon"></span>
-                        <span>设置</span>
-                    </a>
-                </nav>
-                <div class="sidebar-bottom">
-                    <button class="theme-toggle" id="theme-toggle" title="切换主题">
-                        🌙
-                    </button>
-                </div>
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active" data-page="dashboard">
+                    <span class="nav-icon"></span>
+                    <span>仪表盘</span>
+                </a>
+                <a href="#" class="nav-item" data-page="rules">
+                    <span class="nav-icon"></span>
+                    <span>规则</span>
+                </a>
+                <a href="#" class="nav-item" data-page="logs">
+                    <span class="nav-icon"></span>
+                    <span>日志</span>
+                </a>
+                <a href="#" class="nav-item" data-page="cloudflare">
+                    <span class="nav-icon"></span>
+                    <span>Cloudflare ECH</span>
+                </a>
+                <a href="#" class="nav-item" data-page="settings">
+                    <span class="nav-icon"></span>
+                    <span>设置</span>
+                </a>
+            </nav>
+            <div class="sidebar-bottom">
+                <button class="theme-toggle" id="theme-toggle" title="切换主题">
+                    🌙
+                </button>
+            </div>
         </aside>
 
         <main class="main-content">
@@ -63,8 +72,10 @@
                         </div>
                         <div style="display: flex; gap: 12px; flex-wrap: wrap;">
                             <button class="btn btn-primary" id="btn-start" onclick="startProxy()">启动代理</button>
-                            <button class="btn btn-danger" id="btn-stop" onclick="stopProxy()" style="display: none;">停止代理</button>
-                            <button class="btn btn-secondary" id="btn-sysproxy" onclick="toggleSystemProxy()">系统代理: 关</button>
+                            <button class="btn btn-danger" id="btn-stop" onclick="stopProxy()"
+                                style="display: none;">停止代理</button>
+                            <button class="btn btn-secondary" id="btn-sysproxy" onclick="toggleSystemProxy()">系统代理:
+                                关</button>
                         </div>
                     </div>
 
@@ -155,6 +166,53 @@
                 </div>
             </div>
 
+            <!-- Cloudflare ECH Page -->
+            <div id="page-cloudflare" class="page" style="display: none;">
+                <div class="card">
+                    <h2>Cloudflare ECH 一键加速</h2>
+                    <p class="description">
+                        通过 ECH (Encrypted Client Hello) 技术，利用未被阻断的 Cloudflare 域名获取配置，从而绕过 SNI 阻断。<br>
+                        <strong>适用场景：</strong> 目标网站托管在 Cloudflare，但因 SNI 阻断无法直接访问。
+                    </p>
+                    <div class="card-item" onclick="showPage('settings')"
+                        style="cursor: pointer; margin-bottom: 24px; border-style: dashed;">
+                        <div class="card-info">
+                            <div class="card-title">⚙️ 配置全局优选 IP 池</div>
+                            <div class="card-meta">设置后可提高 Cloudflare 站点的访问稳定性</div>
+                        </div>
+                        <div style="font-size: 20px; color: var(--accent);">→</div>
+                    </div>
+                    <div class="form-grid"
+                        style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px 24px;">
+                        <div class="form-group form-span-2">
+                            <label>目标域名列表 (一行一个)</label>
+                            <textarea id="cf-input-domains" placeholder="例如：
+linux.do
+exhentai.org" rows="3"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>优选 IP (可选)</label>
+                            <input type="text" id="cf-input-ip" placeholder="留空使用全局优选池">
+                        </div>
+                        <div class="form-group">
+                            <label>ECH 配置来源域名</label>
+                            <input type="text" id="cf-input-ech-domain" value="crypto.cloudflare.com">
+                        </div>
+                        <div class="form-group form-span-2" style="margin-top: 8px;">
+                            <button class="btn btn-primary" id="btn-cf-add" onclick="addCloudflareRule()"
+                                style="width: auto; padding: 12px 32px;">一键添加 / 更新规则</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top: 24px;">
+                    <h3>已加速域名</h3>
+                    <div id="cf-rules-container" class="card-list">
+                        <!-- Cloudflare rules cards will be rendered here -->
+                    </div>
+                </div>
+            </div>
+
             <!-- Settings Page -->
             <div id="page-settings" class="page" style="display: none;">
                 <h1>设置</h1>
@@ -179,6 +237,26 @@
                     </div>
                     <button class="btn btn-primary" onclick="regenerateCert()">重新生成证书</button>
                     <button class="btn btn-secondary" onclick="exportCert()">导出证书</button>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Cloudflare 专项优化</h3>
+                    <div class="setting-item">
+                        <label>DoH 服务器 (用于获取 ECH)</label>
+                        <input type="text" id="setting-cf-doh" placeholder="https://223.5.5.5/dns-query">
+                    </div>
+                    <div class="setting-item" style="flex-direction: column; align-items: flex-start;">
+                        <label>优选 IP 池 (全局)</label>
+                        <div class="tag-input-wrapper" style="display: flex; gap: 8px;">
+                            <input type="text" id="setting-ip-input" placeholder="输入 IP 地址 (如 162.159.44.199)">
+                            <button class="btn btn-primary" id="btn-add-ip" style="flex-shrink: 0;">添加</button>
+                        </div>
+                        <div id="ip-tag-container" class="tag-container">
+                            <!-- IP tags will be rendered here -->
+                        </div>
+                        <small style="margin-top: 8px; color: var(--text-secondary);">当规则开启“优选 IP 池”且未指定独立 IP
+                            时，将从中随机选择。</small>
+                    </div>
                 </div>
 
                 <div class="settings-section">
@@ -228,6 +306,11 @@
                         <label>SNI 伪造</label>
                         <input type="text" id="input-snifake" placeholder="可选，用于伪造 SNI">
                     </div>
+                    <div class="form-group form-span-2">
+                        <label>ECH 优选域名 (DoH 查询源)</label>
+                        <input type="text" id="input-ech-domain"
+                            placeholder="可选 (留空则默认使用目标域名进行查询，如 crypto.cloudflare.com)">
+                    </div>
                     <div class="form-group">
                         <label>uTLS 策略</label>
                         <select id="input-utls-policy">
@@ -237,9 +320,17 @@
                         </select>
                     </div>
                     <div class="form-group form-span-2">
-                        <label class="inline-check">
-                            <input type="checkbox" id="input-enabled" checked> 启用当前规则
-                        </label>
+                        <div class="checkbox-group">
+                            <label class="inline-check">
+                                <input type="checkbox" id="input-enabled" checked> 启用规则
+                            </label>
+                            <label class="inline-check">
+                                <input type="checkbox" id="input-ech-enabled"> ECH 加密
+                            </label>
+                            <label class="inline-check">
+                                <input type="checkbox" id="input-use-cf-pool"> 优选 IP 池
+                            </label>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -278,4 +369,5 @@
 
     <script src="/src/main.js" type="module"></script>
 </body>
+
 </html>
